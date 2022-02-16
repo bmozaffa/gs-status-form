@@ -20,14 +20,33 @@ function getMissingStatus() {
   var links = getLinks();
   var map = readForm(links.statusFormId);
   var kerberosMap = getKereberosMap(links.roverSheetId);
+
+  //Figure out who need to submit status report
+  var statusRequired = new Set();
+  kerberosMap.forEach((value, key) => {
+    if (value.get("Job Title").includes("Manager")) {
+      //Exclude managers from status entry
+    } else if (value.get("Job Title").includes("Director")) {
+      //Exclude directors from missing entry
+    } else if (value.get("Job Title").includes("Intern")) {
+      //Exclude interns from missing entry
+    } else if (key) {
+      //Add entry only if non-empty
+      statusRequired.add(key);
+    }
+  });
+
+  //Remove from the list those who have reported status
   map.forEach(statusList => {
     statusList.forEach(responseObject => {
-      kerberosMap.delete(responseObject.kerberbos);
+      statusRequired.delete(responseObject.kerberbos);
     });
   });
-  console.log("Missing status for %s people", kerberosMap.size);
-  kerberosMap.forEach((value, key) => {
-    console.log(key);
+  console.log("Missing status for %s people", statusRequired.size);
+  statusRequired.forEach(kerberos => {
+    var associateInfo = kerberosMap.get(kerberos);
+    var managerInfo = kerberosMap.get(associateInfo.get("Manager UID"));
+    console.log("%s who reports to %s", associateInfo.get("Name"), managerInfo.get("Name"));
   });
 }
 
@@ -216,16 +235,25 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
 }
 
 function getStatusText(responseObject, kerberosMap) {
-  var respondent = kerberosMap.get(responseObject.kerberbos);
+  var respondent = kerberosMap.get(responseObject.kerberbos).get("Name");
   return responseObject.epic + ":\n" + responseObject.status + "\n[By " + respondent + " on " + responseObject.timestamp + "]\n";
 }
 
 function getKereberosMap(spreadsheetId) {
   var map = new Map();
   var sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName("Rover");
-  var values = sheet.getRange(2, 1, sheet.getLastRow(), 2).getValues();
+  var columns = sheet.getLastColumn();
+  var header = sheet.getRange(1, 1, 1, columns).getValues()[0];
+  // console.log(header);
+  var values = sheet.getRange(2, 1, sheet.getLastRow(), columns).getValues();
   values.forEach(value => {
-    map.set(value[1], value[0]);
+    var record = new Map();
+    for (var col = 0; col < columns; col++) {
+      if (header[col]) {
+        record.set(header[col], value[col]);
+      }
+    }
+    map.set(value[1], record);
   });
   return map;
 }
