@@ -76,14 +76,14 @@ function getMissingStatus(statusFormId, roverSheetId) {
 
 function archiveReports() {
   var links = getLinks();
-  var archiveSheet = SpreadsheetApp.openById(links.roverSheetId).getSheets()[0];
-  var responseObjects = readResponseObjects(links.statusFormId);
-  responseObjects.forEach(obj => {
-    console.log(obj);
-    archiveSheet.appendRow([obj.kerberbos, obj.timestamp, obj.initiative, obj.effort, obj.epic, obj.status]);
-  });
-  // var form = FormApp.openById(links.statusFormId);
-  // form.deleteAllResponses();
+  // var archiveSheet = SpreadsheetApp.openById(links.?????).getSheets()[0];
+  // var responseObjects = readResponseObjects(links.statusFormId);
+  // responseObjects.forEach(obj => {
+  //   console.log(obj);
+  //   archiveSheet.appendRow([obj.kerberbos, obj.timestamp, obj.initiative, obj.effort, obj.epic, obj.status]);
+  // });
+  var form = FormApp.openById(links.statusFormId);
+  form.deleteAllResponses();
 }
 
 function printForm() {
