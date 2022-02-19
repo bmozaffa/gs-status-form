@@ -16,10 +16,35 @@ function doGet(e) {
   return HtmlService.createHtmlOutput(response);
 }
 
+function logMissingStatus() {
+  var links = getLinks();
+  var missing = getMissingStatus(links.statusFormId, links.roverSheetId);
+  missing.statusRequired.forEach(kerberos => {
+    console.log(">> %s", kerberos);
+  });
+}
+
 function notifyMissingStatus() {
   var links = getLinks();
-  var map = readForm(links.statusFormId);
-  var kerberosMap = getKereberosMap(links.roverSheetId);
+  var missing = getMissingStatus(links.statusFormId, links.roverSheetId);
+
+  var subjectBase = "Missing weekly status report for ";
+  var body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
+  missing.statusRequired.forEach(kerberos => {
+    var associateInfo = missing.kerberosMap.get(kerberos);
+    var managerInfo = missing.kerberosMap.get(associateInfo.get("Manager UID"));
+    var to = associateInfo.get("Email");
+    var cc = managerInfo.get("Email");
+    var subject = subjectBase + associateInfo.get("Name").split(" ")[0];
+    GmailApp.sendEmail(to, subject,body, {cc: cc});
+    console.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
+    console.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
+  });
+}
+
+function getMissingStatus(statusFormId, roverSheetId) {
+  var map = readForm(statusFormId);
+  var kerberosMap = getKereberosMap(roverSheetId);
 
   //Figure out who need to submit status report
   var statusRequired = new Set();
@@ -43,17 +68,10 @@ function notifyMissingStatus() {
     });
   });
   console.log("Missing status for %s people", statusRequired.size);
-  statusRequired.forEach(kerberos => {
-    var associateInfo = kerberosMap.get(kerberos);
-    var managerInfo = kerberosMap.get(associateInfo.get("Manager UID"));
-    var to = associateInfo.get("Email");
-    var cc = managerInfo.get("Email");
-    var subject = "Missing weekly status report";
-    var body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
-    GmailApp.sendEmail(to, subject, body, { cc: cc });
-    console.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
-    console.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
-  });
+  var missingStatus = new Object();
+  missingStatus.statusRequired = statusRequired;
+  missingStatus.kerberosMap = kerberosMap;
+  return missingStatus;
 }
 
 function archiveReports() {
