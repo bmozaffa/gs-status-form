@@ -36,7 +36,7 @@ function notifyMissingStatus() {
     var to = associateInfo.get("Email");
     var cc = managerInfo.get("Email");
     var subject = subjectBase + associateInfo.get("Name").split(" ")[0];
-    GmailApp.sendEmail(to, subject,body, {cc: cc});
+    GmailApp.sendEmail(to, subject, body, { cc: cc });
     console.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
     console.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
   });
@@ -108,6 +108,7 @@ function copyTemplate(templateDocId, statusDocId) {
   var template = DocumentApp.openById(templateDocId).getBody().copy();
   var doc = DocumentApp.openById(statusDocId);
   var body = doc.getBody();
+  body.appendPageBreak();
   body.clear();
   var totalElements = template.getNumChildren();
   for (var index = 0; index < totalElements; index++) {
@@ -159,7 +160,10 @@ function readResponseObjects(formId) {
     responseObj.kerberbos = response.getRespondentEmail().split('@')[0];
     var answers = response.getItemResponses()
     responseObj.initiative = answers[0].getResponse();
-    if (answers.length < 4) {
+    if (responseObj.initiative === "PTO / Learning / No Status") {
+      responseObj.epic = responseObj.kerberbos;
+      responseObj.status = "N/A";
+    } else if (answers.length < 4) {
       responseObj.epic = answers[1].getResponse();
       responseObj.status = answers[2].getResponse();
     } else {
@@ -225,9 +229,17 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     var kerberosMap = getKereberosMap(roverSheetId);
     if (statuses) {
       statuses.forEach(value => {
-        var inserted = body.insertListItem(listItemIndices[index], listItem.copy());
-        var statusText = getStatusText(value, kerberosMap);
-        inserted.editAsText().setText(statusText);
+        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+        inserted.setText("");
+        getStatusText(value, kerberosMap).forEach(part => {
+          inserted.appendText(part.text);
+          if (part.isLink) {
+            inserted.appendText("\u200B");
+            var endOffsetInclusive = inserted.getText().length - 2;
+            var startOffset = endOffsetInclusive - part.text.length + 1;
+            inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
+          }
+        });
       });
       statusMap.delete(key);
     }
@@ -236,9 +248,17 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       mappedStatuses.forEach(mappedKey => {
         var otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
-          var inserted = body.insertListItem(listItemIndices[index], listItem.copy());
-          var statusText = ">>> " + mappedKey + " - " + getStatusText(value, kerberosMap);
-          inserted.editAsText().setText(statusText);
+          let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+          inserted.setText(">>> " + mappedKey + " - ");
+          getStatusText(value, kerberosMap).forEach(part => {
+            inserted.appendText(part.text);
+            if (part.isLink) {
+              inserted.appendText("\u200B");
+              var endOffsetInclusive = inserted.getText().length - 2;
+              var startOffset = endOffsetInclusive - part.text.length + 1;
+              inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
+            }
+          });
         });
         statusMap.delete(key);
       });
@@ -259,8 +279,13 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
 }
 
 function getStatusText(responseObject, kerberosMap) {
-  var respondent = kerberosMap.get(responseObject.kerberbos).get("Name");
-  return responseObject.epic + ":\n" + responseObject.status + "\n[By " + respondent + " on " + responseObject.timestamp + "]\n";
+  let statusParts = getStatusParts(responseObject.epic + ":\n");
+  statusParts = statusParts.concat(getStatusParts(responseObject.status));
+  statusParts.push({
+    isLink: false,
+    text: "\n[By " + kerberosMap.get(responseObject.kerberbos).get("Name") + " on " + responseObject.timestamp + "]\n"
+  });
+  return statusParts;
 }
 
 function getKereberosMap(spreadsheetId) {
@@ -280,4 +305,35 @@ function getKereberosMap(spreadsheetId) {
     map.set(value[1], record);
   });
   return map;
+}
+
+function getStatusParts(string) {
+  // console.log("Original string is [%s]", string);
+  let statusParts = [];
+  const regex = new RegExp("\\[([^)]*)\\]\\s*\\(([^\\)]*)\\)", "g");
+  let startIndex = 0;
+  let result;
+  while ((result = regex.exec(string)) !== null) {
+    // console.log(`Found ${result[0]} at ${result.index}, with text ${result[1]} and link ${result[2]}. Next starts at ${regex.lastIndex}.`);
+    if (result.index > startIndex) {
+      //There is regular text before match, that needs to be added
+      statusParts.push({
+        isLink: false,
+        text: string.substring(startIndex, result.index)
+      });
+    }
+    statusParts.push({
+      isLink: true,
+      text: result[1],
+      url: result[2]
+    });
+    startIndex = regex.lastIndex;
+  }
+  if (startIndex < string.length) {
+    statusParts.push({
+      isLink: false,
+      text: string.substring(startIndex)
+    });
+  }
+  return statusParts;
 }
