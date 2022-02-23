@@ -8,20 +8,57 @@ function getLinks() {
 }
 
 function doGet(e) {
-  var links = getLinks();
-  var form = FormApp.openById(links.statusFormId);
-  var statusEntries = form.getResponses().length;
-  compileStatus();
-  var response = "Successfully generated status report based on " + statusEntries + " form submissions";
+  var command = e.parameter.command;
+  var response;
+  if (command === "missing") {
+    var response = "";
+    var missingHierarchy = getMissingStatusReport();
+    missingHierarchy.forEach((associates, manager) => {
+      response = response + "\nFor those reporting to " + manager;
+      associates.forEach(associate => {
+        response = response + ", " + associate;
+      });
+      response = " have not entered status";
+    });
+    if (response.length === 0) {
+      response = "No missing status entries this week";
+    }
+  } else if (command === "generate") {
+    var links = getLinks();
+    var form = FormApp.openById(links.statusFormId);
+    var statusEntries = form.getResponses().length;
+    compileStatus();
+    response = "Successfully generated status report based on " + statusEntries + " form submissions";
+  } else {
+    response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
+  }
   return HtmlService.createHtmlOutput(response);
 }
 
 function logMissingStatus() {
+  var missingHierarchy = getMissingStatusReport();
+  missingHierarchy.forEach((associates, manager) => {
+    console.log("For %s:", manager);
+    associates.forEach(associate => {
+      console.log(">>> %s", associate);
+    });
+  });
+}
+
+function getMissingStatusReport() {
   var links = getLinks();
   var missing = getMissingStatus(links.statusFormId, links.roverSheetId);
+  var missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
-    console.log(">> %s", kerberos);
+    var associateInfo = missing.kerberosMap.get(kerberos);
+    var associateName = associateInfo.get("Name").split(" ")[0];
+    var managerUID = associateInfo.get("Manager UID");
+    var managerName = missing.kerberosMap.get(managerUID).get("Name").split(" ")[0];
+    var associates = getMapArray(missingHierarchy, managerName);
+    associates.push(associateName);
+    console.log(">> %s", associateName);
   });
+  return missingHierarchy;
 }
 
 function notifyMissingStatus() {
