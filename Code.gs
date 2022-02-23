@@ -259,6 +259,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
   for (var index = listItemIndices.length - 1; index >= 0; index--) {
     //Iterate backwards so inserting status does not make indices invalid
     var listItem = body.getChild(listItemIndices[index]);
+    let attrs = listItem.getAttributes();
+    attrs.FONT_SIZE = 12;
     var key = listItem.getText();
     key = key.substring(1, key.length - 1);
     // console.log("Actual key is %s", key);
@@ -266,7 +268,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     var kerberosMap = getKereberosMap(roverSheetId);
     if (statuses) {
       statuses.forEach(value => {
-        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+        let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
+        let inserted = newListItem.editAsText();
         inserted.setText("");
         getStatusText(value, kerberosMap).forEach(part => {
           inserted.appendText(part.text);
@@ -277,6 +280,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
             inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
           }
         });
+        newListItem.setAttributes(attrs);
       });
       statusMap.delete(key);
     }
@@ -285,7 +289,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       mappedStatuses.forEach(mappedKey => {
         var otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
-          let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+          let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
+          let inserted = newListItem.editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
           getStatusText(value, kerberosMap).forEach(part => {
             inserted.appendText(part.text);
@@ -296,6 +301,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
               inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
             }
           });
+          newListItem.setAttributes(attrs);
         });
         statusMap.delete(key);
       });
