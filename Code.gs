@@ -14,11 +14,9 @@ function doGet(e) {
     var response = "";
     var missingHierarchy = getMissingStatusReport();
     missingHierarchy.forEach((associates, manager) => {
-      response = response + "\nFor those reporting to " + manager;
-      associates.forEach(associate => {
-        response = response + ", " + associate;
-      });
-      response = " have not entered status";
+      response += "<p>" + manager + ": ";
+      response += associates.join(", ");
+      response += " has/have not entered status";
     });
     if (response.length === 0) {
       response = "No missing status entries this week";
