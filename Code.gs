@@ -147,19 +147,37 @@ function copyTemplate(templateDocId, statusDocId) {
   body.clear();
   var totalElements = template.getNumChildren();
   for (var index = 0; index < totalElements; index++) {
-    var element = template.getChild(index).copy();
+    var element = template.getChild(index);
     var type = element.getType();
     if (type == DocumentApp.ElementType.PARAGRAPH)
-      doc.appendParagraph(element);
+      body.appendParagraph(element.copy());
     else if (type == DocumentApp.ElementType.TABLE)
-      doc.appendTable(element);
+      body.appendTable(element.copy());
     else if (type == DocumentApp.ElementType.LIST_ITEM) {
-      var glyphType = element.getGlyphType();
-      doc.appendListItem(element);
-      element.setGlyphType(glyphType);
+      let inserted = body.appendListItem(element.getText());
+      inserted.setAttributes(element.getAttributes());
+      inserted.setListId(element).setGlyphType(element.getGlyphType()).setNestingLevel(element.getNestingLevel());
     } else
       throw new Error("Unknown element type: " + type);
   }
+  body.getListItems().forEach(li => {
+    if (li.getNestingLevel() === 0) {
+      li.setGlyphType(DocumentApp.GlyphType.BULLET);
+    } else if (li.getNestingLevel() === 1) {
+      li.setGlyphType(DocumentApp.GlyphType.HOLLOW_BULLET);
+    } else if (li.getNestingLevel() === 2) {
+      li.setGlyphType(DocumentApp.GlyphType.SQUARE_BULLET);
+    }
+  });
+  body.getParagraphs().forEach(paragraph=>{
+      if (paragraph.getType() === DocumentApp.ElementType.PARAGRAPH) {
+        if (paragraph.getIndentStart() === null)
+          paragraph.setIndentStart(0);
+        if (paragraph.getIndentFirstLine() === null)
+          paragraph.setIndentFirstLine(0);
+      } else if (paragraph.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      }
+  });
   doc.saveAndClose();
 }
 
