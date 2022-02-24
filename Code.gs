@@ -364,7 +364,7 @@ function getKerberosMap(spreadsheetId) {
 function getStatusParts(string) {
   // console.log("Original string is [%s]", string);
   let statusParts = [];
-  const regex = new RegExp("\\[([^)]*)\\]\\s*\\(([^\\)]*)\\)", "g");
+  const regex = new RegExp("\\[([^)]*)\]\\s*\\(([^\)]*)\\)", "g");
   let startIndex = 0;
   let result;
   while ((result = regex.exec(string)) !== null) {
