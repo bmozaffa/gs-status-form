@@ -160,6 +160,9 @@ function copyTemplate(templateDocId, statusDocId) {
     } else
       throw new Error("Unknown element type: " + type);
   }
+  doc.saveAndClose();
+  doc = DocumentApp.openById(statusDocId);
+  body = doc.getBody();
   body.getListItems().forEach(li => {
     if (li.getNestingLevel() === 0) {
       li.setGlyphType(DocumentApp.GlyphType.BULLET);
@@ -170,13 +173,12 @@ function copyTemplate(templateDocId, statusDocId) {
     }
   });
   body.getParagraphs().forEach(paragraph=>{
-      if (paragraph.getType() === DocumentApp.ElementType.PARAGRAPH) {
-        if (paragraph.getIndentStart() === null)
-          paragraph.setIndentStart(0);
-        if (paragraph.getIndentFirstLine() === null)
-          paragraph.setIndentFirstLine(0);
-      } else if (paragraph.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      }
+    if (paragraph.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      if (paragraph.getIndentStart() === null)
+        paragraph.setIndentStart(0);
+      if (paragraph.getIndentFirstLine() === null)
+        paragraph.setIndentFirstLine(0);
+    }
   });
   doc.saveAndClose();
 }
