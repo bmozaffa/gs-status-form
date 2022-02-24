@@ -27,6 +27,11 @@ function doGet(e) {
     let statusEntries = form.getResponses().length;
     compileStatus();
     response = "Successfully generated status report based on " + statusEntries + " form submissions";
+  } else if (command === "archive") {
+    let form = FormApp.openById(getLinks().statusFormId);
+    let statusEntries = form.getResponses().length;
+    archiveReports();
+    response = "Successfully archived " + statusEntries + " form submissions";
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
