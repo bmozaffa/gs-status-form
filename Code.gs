@@ -111,14 +111,16 @@ function archiveReports() {
   form.deleteAllResponses();
 }
 
-function printForm() {
+function logStatus() {
   let links = getLinks();
   let map = readForm(links.statusFormId);
   let kerberosMap = getKerberosMap(links.roverSheetId);
-  //TODO needs to be fixed to support new status parts format
   map.forEach(statusList => {
     statusList.forEach(responseObject => {
-      console.log(getStatusText(responseObject, kerberosMap));
+      let status = getStatusText(responseObject, kerberosMap).map(status=>{
+        return status.text;
+      }).join("");
+      console.log(status);
     });
   });
 }
