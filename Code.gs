@@ -117,7 +117,7 @@ function logStatus() {
   let kerberosMap = getKerberosMap(links.roverSheetId);
   map.forEach(statusList => {
     statusList.forEach(responseObject => {
-      let status = getStatusText(responseObject, kerberosMap).map(status=>{
+      let status = getStatusText(responseObject, kerberosMap).map(status => {
         return status.text;
       }).join("");
       console.log(status);
@@ -270,8 +270,6 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
   for (let index = listItemIndices.length - 1; index >= 0; index--) {
     //Iterate backwards so inserting status does not make indices invalid
     let listItem = body.getChild(listItemIndices[index]);
-    let attrs = listItem.getAttributes();
-    attrs.FONT_SIZE = 12;
     let key = listItem.getText();
     key = key.substring(1, key.length - 1);
     // console.log("Actual key is %s", key);
@@ -280,6 +278,9 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     if (statuses) {
       statuses.forEach(value => {
         let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
+        let attrs = newListItem.getAttributes();
+        attrs.FONT_SIZE = 12;
+        newListItem.setAttributes(attrs);
         let inserted = newListItem.editAsText();
         inserted.setText("");
         getStatusText(value, kerberosMap).forEach(part => {
@@ -291,7 +292,6 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
             inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
           }
         });
-        newListItem.setAttributes(attrs);
       });
       statusMap.delete(key);
     }
@@ -301,6 +301,9 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
         let otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
           let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
+          let attrs = newListItem.getAttributes();
+          attrs.FONT_SIZE = 12;
+          newListItem.setAttributes(attrs);
           let inserted = newListItem.editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
           getStatusText(value, kerberosMap).forEach(part => {
@@ -312,7 +315,6 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
               inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
             }
           });
-          newListItem.setAttributes(attrs);
         });
         statusMap.delete(key);
       });
