@@ -40,7 +40,8 @@ function doGet(e) {
 
 function getMissingStatusReport() {
   let links = getLinks();
-  let missing = getMissingStatus(links.statusFormId, links.roverSheetId);
+  let formMap = readForm(statusFormId);
+  let missing = getMissingStatus(formMap, links.roverSheetId);
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
     let associateInfo = missing.kerberosMap.get(kerberos);
@@ -56,7 +57,8 @@ function getMissingStatusReport() {
 
 function notifyMissingStatus() {
   let links = getLinks();
-  let missing = getMissingStatus(links.statusFormId, links.roverSheetId);
+  let formMap = readForm(statusFormId);
+  let missing = getMissingStatus(formMap, links.roverSheetId);
 
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
@@ -72,8 +74,7 @@ function notifyMissingStatus() {
   });
 }
 
-function getMissingStatus(statusFormId, roverSheetId) {
-  let map = readForm(statusFormId);
+function getMissingStatus(formMap, roverSheetId) {
   let kerberosMap = getKerberosMap(roverSheetId);
 
   //Figure out who need to submit status report
@@ -92,7 +93,7 @@ function getMissingStatus(statusFormId, roverSheetId) {
   });
 
   //Remove from the list those who have reported status
-  map.forEach(statusList => {
+  formMap.forEach(statusList => {
     statusList.forEach(responseObject => {
       statusRequired.delete(responseObject.kerberbos);
     });
@@ -213,16 +214,13 @@ function readResponseObjects(formId) {
     responseObj.kerberbos = response.getRespondentEmail().split('@')[0];
     let answers = response.getItemResponses()
     responseObj.initiative = answers[0].getResponse();
-    if (responseObj.initiative === "PTO / Learning / No Status") {
-      responseObj.epic = responseObj.kerberbos;
-      responseObj.status = "N/A";
-    } else if (answers.length < 4) {
-      responseObj.epic = answers[1].getResponse();
-      responseObj.status = answers[2].getResponse();
-    } else {
+    if (answers.length >= 4) {
       responseObj.effort = answers[1].getResponse();
       responseObj.epic = answers[2].getResponse();
       responseObj.status = answers[3].getResponse();
+    } else if (answers.length >= 3) {
+      responseObj.epic = answers[1].getResponse();
+      responseObj.status = answers[2].getResponse();
     }
     responseObjects.push(responseObj);
   });
@@ -283,18 +281,32 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     if (statuses) {
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
-        inserted.setText("");
-        getStatusText(value, kerberosMap).forEach(part => {
-          inserted.appendText(part.text);
-          if (part.isLink) {
-            inserted.appendText("\u200B");
-            let endOffsetInclusive = inserted.getText().length - 2;
-            let startOffset = endOffsetInclusive - part.text.length + 1;
-            inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
-          }
-        });
+        if (key === "PTO / Learning / No Status") {
+          let associateInfo = kerberosMap.get(value.kerberbos);
+          let associateName = associateInfo.get("Name").split(" ")[0];
+          inserted.setText(associateName);
+        } else {
+          inserted.setText("");
+          getStatusText(value, kerberosMap).forEach(part => {
+            inserted.appendText(part.text);
+            if (part.isLink) {
+              inserted.appendText("\u200B");
+              let endOffsetInclusive = inserted.getText().length - 2;
+              let startOffset = endOffsetInclusive - part.text.length + 1;
+              inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
+            }
+          });
+        }
       });
       statusMap.delete(key);
+    } else if (key === "Missing Status") {
+      let missing = getMissingStatus(statusMap, roverSheetId);
+      missing.statusRequired.forEach(kerberos => {
+        let associateInfo = missing.kerberosMap.get(kerberos);
+        let associateName = associateInfo.get("Name").split(" ")[0];
+        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+        inserted.setText(associateName);
+      });
     }
     let mappedStatuses = otherStatusMap.get(key);
     if (mappedStatuses) {
