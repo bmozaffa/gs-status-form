@@ -334,6 +334,12 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
   body.getListItems().forEach(listItem => {
     if (listItem.findText("%.*%")) {
       listItem.editAsText().setText("");
+    } else {
+      let attrs = listItem.getAttributes();
+      attrs.FONT_SIZE = 12;
+      listItem.setAttributes(attrs);
+      listItem.setBold(false);
+      listItem.setItalic(false);
     }
   });
   doc.saveAndClose();
