@@ -282,11 +282,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     let kerberosMap = getKerberosMap(roverSheetId);
     if (statuses) {
       statuses.forEach(value => {
-        let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
-        let attrs = newListItem.getAttributes();
-        attrs.FONT_SIZE = 12;
-        newListItem.setAttributes(attrs);
-        let inserted = newListItem.editAsText();
+        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
         inserted.setText("");
         getStatusText(value, kerberosMap).forEach(part => {
           inserted.appendText(part.text);
@@ -305,11 +301,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       mappedStatuses.forEach(mappedKey => {
         let otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
-          let newListItem = body.insertListItem(listItemIndices[index], listItem.copy());
-          let attrs = newListItem.getAttributes();
-          attrs.FONT_SIZE = 12;
-          newListItem.setAttributes(attrs);
-          let inserted = newListItem.editAsText();
+          let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
           getStatusText(value, kerberosMap).forEach(part => {
             inserted.appendText(part.text);
