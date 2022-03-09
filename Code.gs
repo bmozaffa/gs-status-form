@@ -40,7 +40,7 @@ function doGet(e) {
 
 function getMissingStatusReport() {
   let links = getLinks();
-  let formMap = readForm(statusFormId);
+  let formMap = readForm(links.statusFormId);
   let missing = getMissingStatus(formMap, links.roverSheetId);
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
