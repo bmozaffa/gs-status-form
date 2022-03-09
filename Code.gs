@@ -163,6 +163,13 @@ function copyTemplate(templateDocId, statusDocId) {
   doc = DocumentApp.openById(statusDocId);
   body = doc.getBody();
   body.getListItems().forEach(li => {
+    if (li.findText("%.*%")) {
+      let attrs = li.getAttributes();
+      attrs.FONT_SIZE = 12;
+      li.setAttributes(attrs);
+      li.setBold(false);
+      li.setItalic(false);
+    }
     if (li.getNestingLevel() === 0) {
       li.setGlyphType(DocumentApp.GlyphType.BULLET);
     } else if (li.getNestingLevel() === 1) {
@@ -280,7 +287,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     let kerberosMap = getKerberosMap(roverSheetId);
     if (statuses) {
       statuses.forEach(value => {
-        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+        let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         if (key === "PTO / Learning / No Status") {
           let associateInfo = kerberosMap.get(value.kerberbos);
           let associateName = associateInfo.get("Name").split(" ")[0];
@@ -304,7 +311,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       missing.statusRequired.forEach(kerberos => {
         let associateInfo = missing.kerberosMap.get(kerberos);
         let associateName = associateInfo.get("Name").split(" ")[0];
-        let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+        let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         inserted.setText(associateName);
       });
     }
@@ -313,7 +320,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       mappedStatuses.forEach(mappedKey => {
         let otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
-          let inserted = body.insertListItem(listItemIndices[index], listItem.copy()).editAsText();
+          let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
           getStatusText(value, kerberosMap).forEach(part => {
             inserted.appendText(part.text);
@@ -337,13 +344,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
 
   body.getListItems().forEach(listItem => {
     if (listItem.findText("%.*%")) {
-      listItem.editAsText().setText("");
-    } else {
-      let attrs = listItem.getAttributes();
-      attrs.FONT_SIZE = 12;
-      listItem.setAttributes(attrs);
-      listItem.setBold(false);
-      listItem.setItalic(false);
+      body.removeChild(listItem);
     }
   });
   doc.saveAndClose();
