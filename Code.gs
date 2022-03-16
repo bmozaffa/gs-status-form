@@ -57,7 +57,7 @@ function getMissingStatusReport() {
 
 function notifyMissingStatus() {
   let links = getLinks();
-  let formMap = readForm(statusFormId);
+  let formMap = readForm(links.statusFormId);
   let missing = getMissingStatus(formMap, links.roverSheetId);
 
   let subjectBase = "Missing weekly status report for ";
@@ -270,7 +270,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       } else if (keyParts.length === 2) {
         newKey = keyParts[0] + ".Other";
       } else {
-        throw new Error("Unexpected use of dot notation");
+        console.log("Assuming that key includes Other with a .");
+        newKey = keyParts[0] + ".Other";
       }
       let mappedCategories = getMapArray(otherStatusMap, newKey);
       mappedCategories.push(key);
