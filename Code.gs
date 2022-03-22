@@ -28,10 +28,8 @@ function doGet(e) {
     compileStatus();
     response = "Successfully generated status report based on " + statusEntries + " form submissions";
   } else if (command === "archive") {
-    let form = FormApp.openById(getLinks().statusFormId);
-    let statusEntries = form.getResponses().length;
-    archiveReports();
-    response = "Successfully archived " + statusEntries + " form submissions";
+    let archived = archiveReports(e.parameter.days);
+    response = "Successfully archived " + archived + " form submissions";
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
@@ -105,16 +103,27 @@ function getMissingStatus(formMap, roverSheetId) {
   return missingStatus;
 }
 
-function archiveReports() {
+function archiveReports(days) {
   let links = getLinks();
-  // let archiveSheet = SpreadsheetApp.openById(links.?????).getSheets()[0];
-  // let responseObjects = readResponseObjects(links.statusFormId);
-  // responseObjects.forEach(obj => {
-  //   console.log(obj);
-  //   archiveSheet.appendRow([obj.kerberbos, obj.timestamp, obj.initiative, obj.effort, obj.epic, obj.status]);
-  // });
   let form = FormApp.openById(links.statusFormId);
-  form.deleteAllResponses();
+  let cutoff = new Date();
+  if (!days) {
+    days = 7;
+  }
+  cutoff.setDate(cutoff.getDate() - days);
+  console.log("Cutoff is " + cutoff);
+  responses = form.getResponses();
+  let count = 0;
+  let total = responses.length;
+  responses.forEach(response => {
+    if (response.getTimestamp() < cutoff) {
+      form.deleteResponse(response.getId());
+      count++;
+    } else {
+    }
+  });
+  console.log("Archived " + count + " responses out of " + total);
+  return count;
 }
 
 function logStatus() {
