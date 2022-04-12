@@ -149,7 +149,18 @@ function compileStatus() {
 
 function copyTemplate(templateDocId, statusDocId) {
   let template = DocumentApp.openById(templateDocId).getBody().copy();
-  let doc = DocumentApp.openById(statusDocId);
+  let doc;
+  try {
+    doc = DocumentApp.openById(statusDocId);
+  } catch(err) {
+    try {
+      console.warn("Failed to open document, will try again", err);
+      doc = DocumentApp.openById(statusDocId);
+    } catch(err2) {
+      console.error("Failed to open document", err2);
+      throw err2;
+    }
+  }
   let body = doc.getBody();
   body.appendPageBreak();
   body.clear();
@@ -254,7 +265,18 @@ function getMapArray(map, key) {
 }
 
 function insertStatus(statusDocId, roverSheetId, statusMap) {
-  let doc = DocumentApp.openById(statusDocId);
+  let doc;
+  try {
+    doc = DocumentApp.openById(statusDocId);
+  } catch(err) {
+    try {
+      console.warn("Failed to open document, will try again", err);
+      doc = DocumentApp.openById(statusDocId);
+    } catch(err2) {
+      console.error("Failed to open document", err2);
+      throw err2;
+    }
+  }
   let body = doc.getBody();
   let totalElements = body.getNumChildren();
   let listItemIndices = [];
@@ -361,11 +383,15 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
 }
 
 function getStatusText(responseObject, kerberosMap) {
+  let name = responseObject.kerberbos;
+  if (kerberosMap.get(responseObject.kerberbos)) {
+    name = kerberosMap.get(responseObject.kerberbos).get("Name");
+  }
   let statusParts = getStatusParts(responseObject.epic + ":\n");
   statusParts = statusParts.concat(getStatusParts(responseObject.status));
   statusParts.push({
     isLink: false,
-    text: "\n[By " + kerberosMap.get(responseObject.kerberbos).get("Name") + " on " + responseObject.timestamp + "]\n"
+    text: "\n[By " + name + " on " + responseObject.timestamp + "]\n"
   });
   return statusParts;
 }
