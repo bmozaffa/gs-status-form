@@ -132,10 +132,7 @@ function logStatus() {
   let kerberosMap = getKerberosMap(links.roverSheetId);
   map.forEach(statusList => {
     statusList.forEach(responseObject => {
-      let status = getStatusText(responseObject, kerberosMap).map(status => {
-        return status.text;
-      }).join("");
-      console.log(status);
+      console.log(getStatusText(responseObject, kerberosMap));
     });
   });
 }
@@ -325,16 +322,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
           let associateName = associateInfo.get("Name").split(" ")[0];
           inserted.setText(associateName);
         } else {
-          inserted.setText("");
-          getStatusText(value, kerberosMap).forEach(part => {
-            inserted.appendText(part.text);
-            if (part.isLink) {
-              inserted.appendText("\u200B");
-              let endOffsetInclusive = inserted.getText().length - 2;
-              let startOffset = endOffsetInclusive - part.text.length + 1;
-              inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
-            }
-          });
+          inserted.setText(getStatusText(value, kerberosMap));
         }
       });
       statusMap.delete(key);
@@ -353,16 +341,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
         let otherStatuses = statusMap.get(mappedKey);
         otherStatuses.forEach(value => {
           let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
-          inserted.setText(">>> " + mappedKey + " - ");
-          getStatusText(value, kerberosMap).forEach(part => {
-            inserted.appendText(part.text);
-            if (part.isLink) {
-              inserted.appendText("\u200B");
-              let endOffsetInclusive = inserted.getText().length - 2;
-              let startOffset = endOffsetInclusive - part.text.length + 1;
-              inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
-            }
-          });
+          inserted.setText(">>> " + mappedKey + " - " + getStatusText(value, kerberosMap));
         });
         statusMap.delete(key);
       });
@@ -387,13 +366,9 @@ function getStatusText(responseObject, kerberosMap) {
   if (kerberosMap.get(responseObject.kerberbos)) {
     name = kerberosMap.get(responseObject.kerberbos).get("Name");
   }
-  let statusParts = getStatusParts(responseObject.epic + ":\n");
-  statusParts = statusParts.concat(getStatusParts(responseObject.status));
-  statusParts.push({
-    isLink: false,
-    text: "\n[By " + name + " on " + responseObject.timestamp + "]\n"
-  });
-  return statusParts;
+  let statusText = responseObject.epic + ":\n" + responseObject.status;
+  statusText += "\n[By " + name + " on " + responseObject.timestamp + "]\n";
+  return statusText;
 }
 
 function getKerberosMap(spreadsheetId) {
@@ -413,35 +388,4 @@ function getKerberosMap(spreadsheetId) {
     map.set(value[1], record);
   });
   return map;
-}
-
-function getStatusParts(string) {
-  // console.log("Original string is [%s]", string);
-  let statusParts = [];
-  const regex = new RegExp("\\[([^)]*)\]\\s*\\(([^\)]*)\\)", "g");
-  let startIndex = 0;
-  let result;
-  while ((result = regex.exec(string)) !== null) {
-    // console.log(`Found ${result[0]} at ${result.index}, with text ${result[1]} and link ${result[2]}. Next starts at ${regex.lastIndex}.`);
-    if (result.index > startIndex) {
-      //There is regular text before match, that needs to be added
-      statusParts.push({
-        isLink: false,
-        text: string.substring(startIndex, result.index)
-      });
-    }
-    statusParts.push({
-      isLink: true,
-      text: result[1],
-      url: result[2]
-    });
-    startIndex = regex.lastIndex;
-  }
-  if (startIndex < string.length) {
-    statusParts.push({
-      isLink: false,
-      text: string.substring(startIndex)
-    });
-  }
-  return statusParts;
 }
