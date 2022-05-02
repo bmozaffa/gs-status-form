@@ -2,7 +2,7 @@ function getLinks() {
   let links = {};
   links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
   links.templateDocId = "1BzP4CzYdhu_VQ2-0TrCsa9drSFiKxFFzLYy4m9jpaKU";
-  links.statusDocId = "11UHpXCgpma_wDrXYfsD6VxVUAhHvrugSwMkPyKx2rlk";
+  links.statusDocId = "14mWOqhXRyxFST6EZz6laB7ZCFhU7xDRQxKGzam4NDCQ";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   return links;
 }
