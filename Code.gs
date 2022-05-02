@@ -164,6 +164,19 @@ function copyTemplate(templateDocId, statusDocId) {
   let body = doc.getBody();
   body.appendPageBreak();
   body.clear();
+  let note = body.insertParagraph(0, "");
+  let text = note.appendText("This document is no longer auto-generated. It was last generated at ");
+  text.setFontSize(16);
+  let time = note.appendText(new Date().toUTCString());
+  time.setBold(true);
+  let refresh = body.insertParagraph(1, "\n");
+  let click = refresh.appendText("Click ");
+  click.setFontSize(16);
+  click.setBold(false);
+  let link = refresh.appendText("here");
+  refresh.appendText(" if you think more status entries are available and wish to refresh this document.")
+  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwAxjr-cpOLXs_Y9KERBs7SktzkfSKO9om4RHX5nFzIHKV1D-z8AS-9tajF1fQUt90q/exec?command=generate");
+
   let totalElements = template.getNumChildren();
   for (let index = 0; index < totalElements; index++) {
     let element = template.getChild(index);
