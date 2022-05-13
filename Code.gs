@@ -22,11 +22,7 @@ function doGet(e) {
       response = "No missing status entries this week";
     }
   } else if (command === "generate") {
-    let links = getLinks();
-    let form = FormApp.openById(links.statusFormId);
-    let statusEntries = form.getResponses().length;
-    compileStatus();
-    response = "Successfully generated status report based on " + statusEntries + " form submissions";
+    response = compileStatus();
   } else if (command === "archive") {
     let archived = archiveReports(e.parameter.days);
     response = "Successfully archived " + archived + " form submissions";
@@ -146,8 +142,10 @@ function compileStatus() {
     copyTemplate(links.templateDocId, links.statusDocId);
     let statusMap = readForm(links.statusFormId);
     insertStatus(links.statusDocId, links.roverSheetId, statusMap);
+    let form = FormApp.openById(links.statusFormId);
+    return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
   } else {
-    console.log( "There is no status entry since document was generated" );
+    return "There is no status entry since document was generated";
   }
 }
 
