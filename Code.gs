@@ -142,9 +142,36 @@ function logStatus() {
 
 function compileStatus() {
   let links = getLinks();
-  copyTemplate(links.templateDocId, links.statusDocId);
-  let statusMap = readForm(links.statusFormId);
-  insertStatus(links.statusDocId, links.roverSheetId, statusMap);
+  if( needsUpdate(links.statusFormId, links.statusDocId) ) {
+    copyTemplate(links.templateDocId, links.statusDocId);
+    let statusMap = readForm(links.statusFormId);
+    insertStatus(links.statusDocId, links.roverSheetId, statusMap);
+  } else {
+    console.log( "There is no status entry since document was generated" );
+  }
+}
+
+function needsUpdate(formId, statusDocId) {
+  let form = FormApp.openById(formId);
+  let lastStatus;
+  form.getResponses().forEach(response => {
+    if (lastStatus) {
+      if (response.getTimestamp() > lastStatus) {
+        lastStatus = response.getTimestamp();
+      }
+    } else {
+      lastStatus = response.getTimestamp();
+    }
+  });
+  console.log( "Got latest status entry dated " + lastStatus );
+
+  let doc = DocumentApp.openById(statusDocId);
+  let lastUpdateMessage = "This document is no longer auto-generated. It was last generated at ";
+  let paragraph = doc.getBody().getParagraphs()[0].getText();
+  let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
+  console.log("The doc was last updated on " + lastUpdate);
+
+  return lastStatus > lastUpdate;
 }
 
 function copyTemplate(templateDocId, statusDocId) {
@@ -165,7 +192,8 @@ function copyTemplate(templateDocId, statusDocId) {
   body.appendPageBreak();
   body.clear();
   let note = body.insertParagraph(0, "");
-  let text = note.appendText("This document is no longer auto-generated. It was last generated at ");
+  let lastUpdateMessage = "This document is no longer auto-generated. It was last generated at ";
+  let text = note.appendText(lastUpdateMessage);
   text.setFontSize(16);
   let time = note.appendText(new Date().toUTCString());
   time.setBold(true);
