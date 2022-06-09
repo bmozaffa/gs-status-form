@@ -89,7 +89,7 @@ function getMissingStatus(formMap, roverSheetId) {
   //Remove from the list those who have reported status
   formMap.forEach(statusList => {
     statusList.forEach(responseObject => {
-      statusRequired.delete(responseObject.kerberbos);
+      statusRequired.delete(responseObject.kerberos);
     });
   });
   console.log("Missing status for %s people", statusRequired.size);
@@ -129,7 +129,7 @@ function logStatus() {
   map.forEach((statusList, category) => {
     if (category === "PTO / Learning / No Status") {
       statusList.forEach(responseObject => {
-        console.log(responseObject.kerberbos + " has PTO / Learning / No Status");
+        console.log(responseObject.kerberos + " has PTO / Learning / No Status");
       });
     } else {
       statusList.forEach(responseObject => {
@@ -283,7 +283,7 @@ function readResponseObjects(formId) {
   responses.forEach(response => {
     let responseObj = {};
     responseObj.timestamp = response.getTimestamp();
-    responseObj.kerberbos = response.getRespondentEmail().split('@')[0];
+    responseObj.kerberos = response.getRespondentEmail().split('@')[0];
     let answers = response.getItemResponses()
     responseObj.initiative = answers[0].getResponse();
     if (answers.length >= 4) {
@@ -366,7 +366,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         if (key === "PTO / Learning / No Status") {
-          let associateInfo = kerberosMap.get(value.kerberbos);
+          let associateInfo = kerberosMap.get(value.kerberos);
           let associateName = associateInfo.get("Name").split(" ")[0];
           inserted.setText(associateName);
         } else {
@@ -428,13 +428,13 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
 }
 
 function getStatusText(responseObject, kerberosMap) {
-  let name = responseObject.kerberbos;
-  if (kerberosMap.get(responseObject.kerberbos)) {
-    name = kerberosMap.get(responseObject.kerberbos).get("Name");
+  let name = responseObject.kerberos;
+  if (kerberosMap.get(responseObject.kerberos)) {
+    name = kerberosMap.get(responseObject.kerberos).get("Name");
   }
   let statusParts = getStatusParts(responseObject.epic + ":\n");
   if (!responseObject.status) {
-    console.log(responseObject.kerberbos + " does not have a status");
+    console.log(responseObject.kerberos + " does not have a status");
   }
   statusParts = statusParts.concat(getStatusParts(responseObject.status));
   statusParts.push({
