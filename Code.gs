@@ -172,10 +172,14 @@ function needsUpdate(formId, statusDocId) {
   let doc = DocumentApp.openById(statusDocId);
   let lastUpdateMessage = "This document is no longer auto-generated. It was last generated at ";
   let paragraph = doc.getBody().getParagraphs()[0].getText();
-  let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
-  console.log("The doc was last updated on " + lastUpdate);
-
-  return lastStatus > lastUpdate;
+  if( isNaN(Date.parse(paragraph.substring(lastUpdateMessage.length))) ) {
+    console.error("Failed to parse last update time");
+    return true;
+  } else {
+    let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
+    console.log("The doc was last updated on " + lastUpdate);
+    return lastStatus > lastUpdate;
+  }
 }
 
 function copyTemplate(templateDocId, statusDocId) {
@@ -363,6 +367,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     let statuses = statusMap.get(key);
     let kerberosMap = getKerberosMap(roverSheetId);
     if (statuses) {
+      console.log("Found %s items for %s", statuses.length, key);
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         if (key === "PTO / Learning / No Status") {
@@ -391,6 +396,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         inserted.setText(associateName);
       });
+    } else {
+      console.log("Found no items for %s", key);
     }
     let mappedStatuses = otherStatusMap.get(key);
     if (mappedStatuses) {
