@@ -126,13 +126,19 @@ function logStatus() {
   let links = getLinks();
   let map = readForm(links.statusFormId);
   let kerberosMap = getKerberosMap(links.roverSheetId);
-  map.forEach(statusList => {
-    statusList.forEach(responseObject => {
-      let status = getStatusText(responseObject, kerberosMap).map(status => {
-        return status.text;
-      }).join("");
-      console.log(status);
-    });
+  map.forEach((statusList, category) => {
+    if (category === "PTO / Learning / No Status") {
+      statusList.forEach(responseObject => {
+        console.log(responseObject.kerberbos + " has PTO / Learning / No Status");
+      });
+    } else {
+      statusList.forEach(responseObject => {
+        let status = getStatusText(responseObject, kerberosMap).map(status => {
+          return status.text;
+        }).join("");
+        console.log(status);
+      });
+    }
   });
 }
 
@@ -427,6 +433,9 @@ function getStatusText(responseObject, kerberosMap) {
     name = kerberosMap.get(responseObject.kerberbos).get("Name");
   }
   let statusParts = getStatusParts(responseObject.epic + ":\n");
+  if (!responseObject.status) {
+    console.log(responseObject.kerberbos + " does not have a status");
+  }
   statusParts = statusParts.concat(getStatusParts(responseObject.status));
   statusParts.push({
     isLink: false,
