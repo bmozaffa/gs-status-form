@@ -232,7 +232,7 @@ function copyTemplate(templateDocId, statusDocId) {
   doc = DocumentApp.openById(statusDocId);
   body = doc.getBody();
   body.getListItems().forEach(li => {
-    if (li.findText("%[A-Za-z\.\u0020]+%")) {
+    if (li.findText("%[A-Za-z\.\/\u0020]+%")) {
       let attrs = li.getAttributes();
       attrs.FONT_SIZE = 12;
       li.setAttributes(attrs);
@@ -331,7 +331,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
   let listItemIndices = [];
   let knownStatusKeys = new Set();
   for (let index = 0; index < totalElements; index++) {
-    if (body.getChild(index).getType() === DocumentApp.ElementType.LIST_ITEM && body.getChild(index).findText("%[A-Za-z\.\u0020]+%")) {
+    if (body.getChild(index).getType() === DocumentApp.ElementType.LIST_ITEM && body.getChild(index).findText("%[A-Za-z\.\/\u0020]+%")) {
       listItemIndices.push(index);
       let key = body.getChild(index).getText();
       key = key.substring(1, key.length - 1);
@@ -427,7 +427,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
   });
 
   body.getListItems().forEach(listItem => {
-    if (listItem.findText("%[A-Za-z\.\u0020]+%")) {
+    if (listItem.findText("%[A-Za-z\.\/\u0020]+%")) {
 
       body.removeChild(listItem);
     }
