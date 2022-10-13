@@ -146,8 +146,9 @@ function compileStatus() {
   let links = getLinks();
   if( needsUpdate(links.statusFormId, links.statusDocId) ) {
     copyTemplate(links.templateDocId, links.statusDocId);
-    let statusMap = readForm(links.statusFormId);
-    insertStatus(links.statusDocId, links.roverSheetId, statusMap);
+    let responseObjects = readResponseObjects(links.statusFormId);
+    let statusMap = getStatusMap(responseObjects);
+    insertStatus(links.statusDocId, links.roverSheetId, statusMap, responseObjects.length);
     let form = FormApp.openById(links.statusFormId);
     return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
   } else {
@@ -259,9 +260,12 @@ function copyTemplate(templateDocId, statusDocId) {
 }
 
 function readForm(formId) {
-  let statusMap = new Map();
   let responseObjects = readResponseObjects(formId);
-  // console.log("Found %s status entries", responseObjects.length);
+  return getStatusMap(responseObjects);
+}
+
+function getStatusMap(responseObjects) {
+  let statusMap = new Map();
   responseObjects.forEach(responseObject => {
     let mapKey;
     if (responseObject.effort) {
@@ -313,7 +317,8 @@ function getMapArray(map, key) {
   return array;
 }
 
-function insertStatus(statusDocId, roverSheetId, statusMap) {
+function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
+  let reportedCount = 0;
   let doc;
   try {
     doc = DocumentApp.openById(statusDocId);
@@ -390,6 +395,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
             }
           });
         }
+        reportedCount++;
       });
       statusMap.delete(key);
     } else if (key === "Missing Status") {
@@ -426,9 +432,14 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     }
   }
 
-  statusMap.forEach((value, key) => {
-    console.log("Did not report status for %s", key);
-  });
+  if (reportedCount !== responseCount) {
+    let message = Utilities.formatString("Warning: there are %d status entries in the form but only %d were reported in this document", responseCount, reportedCount);
+    console.log(message);
+    let paragraph = body.getParagraphs()[0].editAsText();
+    paragraph.setText(message);
+    paragraph.setFontSize(22);
+    paragraph.setBold(true);
+  }
 
   body.getListItems().forEach(listItem => {
     if (listItem.findText("%[A-Za-z\.\/\u0020]+%")) {
