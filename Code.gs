@@ -350,8 +350,12 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
       } else if (keyParts.length === 2) {
         newKey = keyParts[0] + ".Other";
       } else {
-        console.log("Assuming that key includes Other with a .");
+        console.log("Assuming that key [%s] includes a .", key);
         newKey = keyParts[0] + ".Other";
+        if (!knownStatusKeys.has(newKey)) {
+          console.log("Did not find %s as a placeholder so this must be an other category off the top: %s", newKey, keyParts[0]);
+          newKey = "Other";
+        }
       }
       let mappedCategories = getMapArray(otherStatusMap, newKey);
       mappedCategories.push(key);
