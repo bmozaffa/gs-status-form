@@ -358,6 +358,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     }
   });
 
+  let kerberosMap = getKerberosMap(roverSheetId);
   for (let index = listItemIndices.length - 1; index >= 0; index--) {
     //Iterate backwards so inserting status does not make indices invalid
     let listItem = body.getChild(listItemIndices[index]);
@@ -365,7 +366,6 @@ function insertStatus(statusDocId, roverSheetId, statusMap) {
     key = key.substring(1, key.length - 1);
     // console.log("Actual key is %s", key);
     let statuses = statusMap.get(key);
-    let kerberosMap = getKerberosMap(roverSheetId);
     if (statuses) {
       console.log("Found %s items for %s", statuses.length, key);
       statuses.forEach(value => {
