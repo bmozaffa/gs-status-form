@@ -416,6 +416,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
         otherStatuses.forEach(value => {
           let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
+          reportedCount++;
           getStatusText(value, kerberosMap).forEach(part => {
             inserted.appendText(part.text);
             if (part.isLink) {
