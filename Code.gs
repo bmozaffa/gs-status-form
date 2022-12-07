@@ -482,8 +482,8 @@ function getKerberosMap(spreadsheetId) {
         record.set(header[col], value[col]);
       }
     }
-    if (isNaN(Date.parse(record.get("Termination Date")))) {
-      //Only include associates who don't have a termination date
+    if (isNaN(Date.parse(record.get("Separation Date")))) {
+      //Only include associates who don't have a Separation Date
       map.set(value[1], record);
     }
   });
