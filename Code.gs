@@ -4,6 +4,7 @@ function getLinks() {
   links.templateDocId = "1BzP4CzYdhu_VQ2-0TrCsa9drSFiKxFFzLYy4m9jpaKU";
   links.statusDocId = "14mWOqhXRyxFST6EZz6laB7ZCFhU7xDRQxKGzam4NDCQ";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
+  links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   return links;
 }
 
@@ -519,4 +520,34 @@ function getStatusParts(string) {
     });
   }
   return statusParts;
+}
+
+function createDraftEmails() {
+  const spreadsheetId = getLinks().statusEmailsId;
+  let sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName("emails");
+  var drafts = [];
+  let values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  values.forEach(value => {
+    drafts.push( {
+      to: value[0],
+      subject: value[3],
+      labels: value[4],
+      options: {
+        bcc: value[2],
+        cc: value[1],
+        from: 'Babak Mozaffari <Babak@redhat.com>'
+      }
+    });
+    drafts.forEach(draft => {
+      Logger.log(draft);
+    });
+  });
+  drafts.forEach(params => {
+    var draft = GmailApp.createDraft(params.to, params.subject, "", params.options);
+    params.labels.split(',').forEach(label => {
+      Logger.log("Label is " + label);
+      var gmailLabel = GmailApp.getUserLabelByName(label);
+      draft.getMessage().getThread().addLabel(gmailLabel);
+    });
+  });
 }
