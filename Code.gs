@@ -145,7 +145,7 @@ function logStatus() {
 
 function compileStatus() {
   let links = getLinks();
-  if( needsUpdate(links.statusFormId, links.statusDocId) ) {
+  if (needsUpdate(links.statusFormId, links.statusDocId)) {
     copyTemplate(links.templateDocId, links.statusDocId);
     let responseObjects = readResponseObjects(links.statusFormId);
     let statusMap = getStatusMap(responseObjects);
@@ -169,12 +169,12 @@ function needsUpdate(formId, statusDocId) {
       lastStatus = response.getTimestamp();
     }
   });
-  console.log( "Got latest status entry dated " + lastStatus );
+  console.log("Got latest status entry dated " + lastStatus);
 
   let doc = DocumentApp.openById(statusDocId);
   let lastUpdateMessage = "This document is no longer auto-generated. It was last generated at ";
   let paragraph = doc.getBody().getParagraphs()[0].getText();
-  if( isNaN(Date.parse(paragraph.substring(lastUpdateMessage.length))) ) {
+  if (isNaN(Date.parse(paragraph.substring(lastUpdateMessage.length)))) {
     console.error("Failed to parse last update time");
     return true;
   } else {
@@ -189,11 +189,11 @@ function copyTemplate(templateDocId, statusDocId) {
   let doc;
   try {
     doc = DocumentApp.openById(statusDocId);
-  } catch(err) {
+  } catch (err) {
     try {
       console.warn("Failed to open document, will try again", err);
       doc = DocumentApp.openById(statusDocId);
-    } catch(err2) {
+    } catch (err2) {
       console.error("Failed to open document", err2);
       throw err2;
     }
@@ -323,11 +323,11 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
   let doc;
   try {
     doc = DocumentApp.openById(statusDocId);
-  } catch(err) {
+  } catch (err) {
     try {
       console.warn("Failed to open document, will try again", err);
       doc = DocumentApp.openById(statusDocId);
-    } catch(err2) {
+    } catch (err2) {
       console.error("Failed to open document", err2);
       throw err2;
     }
@@ -336,12 +336,16 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
   let totalElements = body.getNumChildren();
   let listItemIndices = [];
   let knownStatusKeys = new Set();
+  let knownInitiative = new Set();
   for (let index = 0; index < totalElements; index++) {
     if (body.getChild(index).getType() === DocumentApp.ElementType.LIST_ITEM && body.getChild(index).findText("%[A-Za-z\.\/\u0020]+%")) {
       listItemIndices.push(index);
       let key = body.getChild(index).getText();
       key = key.substring(1, key.length - 1);
       knownStatusKeys.add(key);
+      if (key.includes(".")) {
+        knownInitiative.push(key.split(".")[0]);
+      }
     }
   }
 
@@ -352,6 +356,8 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
       let newKey;
       let keyParts = key.split(".");
       if (keyParts.length === 1) {
+        newKey = "Other";
+      } else if (!knownInitiative.has(keyParts[0])) {
         newKey = "Other";
       } else if (keyParts.length === 2) {
         newKey = keyParts[0] + ".Other";
@@ -528,7 +534,7 @@ function createDraftEmails() {
   var drafts = [];
   let values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
   values.forEach(value => {
-    drafts.push( {
+    drafts.push({
       to: value[0],
       subject: value[3],
       labels: value[4],
