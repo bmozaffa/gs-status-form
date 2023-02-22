@@ -74,8 +74,9 @@ function getMissingStatus(formMap, roverSheetId) {
 
   //Figure out who need to submit status report
   let statusRequired = new Set();
+  const excludedStatus = ["Director, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
   kerberosMap.forEach((value, key) => {
-    if (value.get("Job Title").includes("Manager")) {
+    if (excludedStatus.includes(value.get("Job Title"))) {
       //Exclude managers from status entry
     } else if (value.get("Job Title").includes("Director")) {
       //Exclude directors from missing entry
@@ -344,7 +345,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
       key = key.substring(1, key.length - 1);
       knownStatusKeys.add(key);
       if (key.includes(".")) {
-        knownInitiative.push(key.split(".")[0]);
+        knownInitiative.add(key.split(".")[0]);
       }
     }
   }
