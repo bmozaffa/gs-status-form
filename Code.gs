@@ -30,6 +30,26 @@ function doGet(e) {
   } else if (command === "send-drafts") {
     let sentMessages = sendDraftEmails();
     response = "Successfully sent " + sentMessages + " emails from saved drafts";
+  } else if (command === "mismatch") {
+    response = "";
+    let mismatch = compareAssignments();
+    if (mismatch[0].size > 0) {
+      response += "<p>Activities outside of Roster assignments";
+    }
+    for (let kerberos of mismatch[0].keys()) {
+      response += "<br/>" + kerberos + ": ";
+      response += mismatch[0].get(kerberos).join(", ");
+    }
+    if (mismatch[1].size > 0) {
+      response += "<p>Assignments without any activity this week";
+    }
+    for (let kerberos of mismatch[1].keys()) {
+      response += "<br/>" + kerberos + ": ";
+      response += mismatch[1].get(kerberos).join(", ");
+    }
+    if (response.length === 0) {
+      response = "No missing status entries this week";
+    }
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
@@ -575,4 +595,50 @@ function sendDraftEmails() {
     draft.send();
   });
   return count;
+}
+
+function compareAssignments() {
+  let statusMap = new Map();
+  let responseObjects = readResponseObjects(getLinks().statusFormId);
+  responseObjects.forEach(responseObject => {
+    let statusArray = getMapArray(statusMap, responseObject.kerberos);
+    statusArray.push(responseObject.initiative);
+  });
+
+  let assignmentMap = new Map();
+  let roster = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
+  let assignmentSheet = SpreadsheetApp.openById(roster).getSheetByName("Roster by Person");
+  for (let row = 3; row < 200; row++) {
+    let values = assignmentSheet.getRange(row, 1, row, 4).getValues();
+    let kerberos = values[0][3];
+    if (kerberos.length === 0) {
+      break;
+    }
+    let assignmentArray = getMapArray(assignmentMap, kerberos);
+    assignmentArray.push(values[0][1]);
+  }
+
+  let noActivity = new Map();
+  let noAssignment = new Map();
+  for (let kerberos of assignmentMap.keys()) {
+    let assignments = assignmentMap.get(kerberos);
+    let statuses = statusMap.get(kerberos);
+    if (assignments === undefined && statuses !== undefined) {
+      noAssignment.set(kerberos, statuses);
+    } else if (assignments !== undefined && statuses === undefined) {
+      noActivity.set(kerberos, assignments);
+    } else if (assignments !== undefined && statuses !== undefined) {
+      assignments.forEach(assignment => {
+        if (!statuses.includes(assignment)) {
+          getMapArray(noActivity, kerberos).push(assignment);
+        }
+      });
+      statuses.forEach(status => {
+        if (!assignments.includes(status)) {
+          getMapArray(noAssignment, kerberos).push(status);
+        }
+      });
+    }
+  }
+  return [noAssignment, noActivity];
 }
