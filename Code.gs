@@ -602,7 +602,9 @@ function compareAssignments() {
   let responseObjects = readResponseObjects(getLinks().statusFormId);
   responseObjects.forEach(responseObject => {
     let statusArray = getMapArray(statusMap, responseObject.kerberos);
-    statusArray.push(responseObject.initiative);
+    if (responseObject.initiative !== 'PTO / Learning / No Status') {
+      statusArray.push(responseObject.initiative);
+    }
   });
 
   let assignmentMap = new Map();
