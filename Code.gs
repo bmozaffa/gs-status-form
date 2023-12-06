@@ -602,8 +602,12 @@ function compareAssignments() {
   let responseObjects = readResponseObjects(getLinks().statusFormId);
   responseObjects.forEach(responseObject => {
     let statusArray = getMapArray(statusMap, responseObject.kerberos);
-    if (responseObject.initiative !== 'PTO / Learning / No Status') {
-      statusArray.push(responseObject.initiative);
+    let initiative = responseObject.initiative;
+    if (initiative === 'FSI') {
+      initiative = responseObject.effort;
+    }
+    if (initiative !== 'PTO / Learning / No Status') {
+      statusArray.push(initiative);
     }
   });
 
