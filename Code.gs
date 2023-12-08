@@ -237,7 +237,7 @@ function copyTemplate(templateDocId, statusDocId) {
   click.setBold(false);
   let link = refresh.appendText("here");
   refresh.appendText(" if you think more status entries are available and wish to refresh this document.")
-  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwAxjr-cpOLXs_Y9KERBs7SktzkfSKO9om4RHX5nFzIHKV1D-z8AS-9tajF1fQUt90q/exec?command=generate");
+  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwGck8vr-ZNHVCKRg8-y1p5hfVt4Iognzm4zZoOd0WrsORfzLOKNVHk4te0-qOnHCWU/exec?command=generate");
 
   let totalElements = template.getNumChildren();
   for (let index = 0; index < totalElements; index++) {
