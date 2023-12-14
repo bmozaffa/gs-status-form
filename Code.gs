@@ -117,6 +117,15 @@ function getMissingStatus(formMap, roverSheetId) {
       statusRequired.delete(responseObject.kerberos);
     });
   });
+
+  //Remove from the list those who are on PTO as per their personal calendars
+  for (let kerberos of statusRequired) {
+    if (isOnPTO(kerberos.concat("@redhat.com"))) {
+      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", kerberosMap.get(kerberos).get("Name"));
+      statusRequired.delete(kerberos);
+    }
+  }
+
   console.log("Missing status for %s people", statusRequired.size);
   let missingStatus = {};
   missingStatus.statusRequired = statusRequired;
@@ -647,4 +656,35 @@ function compareAssignments() {
     }
   }
   return [noAssignment, noActivity];
+}
+
+function isOnPTO(email) {
+  //Look for events on user calendar right now to increase performance
+  let nextMinute = new Date();
+  nextMinute.setMinutes(nextMinute.getMinutes() + 2);
+  let params = {
+    timeMin: Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
+    timeMax: Utilities.formatDate(nextMinute, 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
+    showDeleted: false,
+  };
+  let response = Calendar.Events.list(email, params);
+  let ooo = false;
+  response.items.forEach(entry => {
+    if (entry.eventType === "outOfOffice" && isFullDay(entry) ) {
+      ooo = true;
+    }
+  });
+  return ooo;
+}
+
+function isFullDay(event) {
+  if (event.start != null && event.start.date != null ) {
+    //If a date and not a dateTime, this is a full day event as entered
+    return true;
+  } else {
+    let start = Utilities.parseDate(event.start.dateTime, "UTC", 'yyyy-MM-dd\'T\'HH:mm:ssX');
+    let end = Utilities.parseDate(event.end.dateTime, "UTC", 'yyyy-MM-dd\'T\'HH:mm:ssX');
+    let durationHours = (end - start) / 3600000;
+    return durationHours > 4;
+  }
 }
