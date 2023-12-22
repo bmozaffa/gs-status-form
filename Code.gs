@@ -74,6 +74,9 @@ function getMissingStatusReport() {
 }
 
 function notifyMissingStatus() {
+  if (utils.isPaused('notifyMissingStatus')) {
+    return;
+  }
   let links = getLinks();
   let formMap = readForm(links.statusFormId);
   let missing = getMissingStatus(formMap, links.roverSheetId);
@@ -177,6 +180,9 @@ function logStatus() {
 }
 
 function compileStatus() {
+  if (utils.isPaused('compileStatus')) {
+    return;
+  }
   let links = getLinks();
   if (needsUpdate(links.statusFormId, links.statusDocId)) {
     copyTemplate(links.templateDocId, links.statusDocId);
@@ -562,6 +568,9 @@ function getStatusParts(string) {
 }
 
 function createDraftEmails() {
+  if (utils.isPaused('createDraftEmails')) {
+    return;
+  }
   const spreadsheetId = getLinks().statusEmailsId;
   let sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName("emails");
   var drafts = [];
