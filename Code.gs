@@ -633,8 +633,8 @@ function compareAssignments() {
   let roster = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
   let assignmentSheet = SpreadsheetApp.openById(roster).getSheetByName("Roster by Person");
   for (let row = 3; row < 200; row++) {
-    let values = assignmentSheet.getRange(row, 1, row, 4).getValues();
-    let kerberos = values[0][3];
+    let values = assignmentSheet.getRange(row, 1, row, 5).getValues();
+    let kerberos = values[0][4];
     if (kerberos.length === 0) {
       break;
     }
