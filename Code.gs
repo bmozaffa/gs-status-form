@@ -202,21 +202,41 @@ function compileStatus() {
   if (utils.isPaused('compileStatus')) {
     return;
   }
-  let updateNeeded = false;
+  let statusDocs = new Set();
   for (let statusDocId of documentLinks.get("Templates").keys()) {
     if (needsUpdate(globalLinks.statusFormId, statusDocId)) {
       copyTemplate(documentLinks.get("Templates").get(statusDocId), statusDocId);
-      updateNeeded = true;
+      statusDocs.add(statusDocId);
     }
   }
-  if (updateNeeded) {
-    let responseObjects = readResponseObjects(globalLinks.statusFormId);
-    let statusMap = getStatusMap(responseObjects);
-    // insertStatus(statusDocId, globalLinks.roverSheetId, statusMap, responseObjects.length);
-    let form = FormApp.openById(globalLinks.statusFormId);
-    return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
-  } else {
+
+  if (statusDocs.size === 0) {
     return "There is no status entry since document was generated";
+  } else {
+    let allResponseObjects = readResponseObjects(globalLinks.statusFormId);
+    for (let statusDocId of statusDocs) {
+      let responseObjects = [];
+      for (let responseObj of allResponseObjects) {
+        if (matchesStatusDoc(responseObj, statusDocId)) {
+          responseObjects.push(responseObj);
+        }
+      }
+      let statusMap = getStatusMap(responseObjects);
+      insertStatus(statusDocId, globalLinks.roverSheetId, statusMap, responseObjects.length);
+      let form = FormApp.openById(globalLinks.statusFormId);
+      return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
+    }
+  }
+}
+
+function matchesStatusDoc(responseObject, statusDocId) {
+  let initiativeDocId = documentLinks.get("Initiatives").get(responseObject.initiative);
+  if (initiativeDocId) {
+    return initiativeDocId === statusDocId;
+  } else {
+    let associateInfo = getKerberosMap(globalLinks.roverSheetId).get(kerberos);
+    let managerUID = associateInfo.get("Manager UID");
+    return documentLinks.get("Managers").get(managerUID) === statusDocId;
   }
 }
 
