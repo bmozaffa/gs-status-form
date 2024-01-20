@@ -1,8 +1,33 @@
+let documentLinks = new Map();
+getDocumentLinks();
+
+function getDocumentLinks() {
+  let spreadsheet = SpreadsheetApp.openById("1RKF97_z2ruAgUJvxcoArlVt3JEtoFjfLB-spycO3GHw");
+  let sheetNames = ["Initiative", "Manager"];
+  for (sheetName of sheetNames) {
+    let map = new Map();
+    let sheet = spreadsheet.getSheetByName(sheetName);
+    for (let row = 2; row <= sheet.getLastRow(); row++) {
+      let key = sheet.getRange(row, 1, 1, 1).getValue();
+      if (key.length > 0) {
+        let value = {
+          "statusDocId": sheet.getRange(row, 2, 1, 1).getValue(),
+          "templateDocId": sheet.getRange(row, 3, 1, 1).getValue()
+        }
+        map.set(key, value);
+      }
+    }
+    documentLinks.set(sheetName, map);
+  }
+
+  let links = getLinks();
+  documentLinks.set("statusFormId", links.statusFormId);
+  documentLinks.set("roverSheetId", links.roverSheetId);
+}
+
 function getLinks() {
   let links = {};
   links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
-  links.templateDocId = "1BzP4CzYdhu_VQ2-0TrCsa9drSFiKxFFzLYy4m9jpaKU";
-  links.statusDocId = "12YdwbyJREUDGSjYfCerxBaVoBlI9xxv3DdIUbEguP3o";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   return links;
@@ -183,13 +208,16 @@ function compileStatus() {
   if (utils.isPaused('compileStatus')) {
     return;
   }
-  let links = getLinks();
-  if (needsUpdate(links.statusFormId, links.statusDocId)) {
-    copyTemplate(links.templateDocId, links.statusDocId);
-    let responseObjects = readResponseObjects(links.statusFormId);
+  //All status documents are currently updated at the same time, so grab any random status doc:
+  let links = documentLinks.get("Initiative").values().next().value;
+  let statusFormId = documentLinks.get("statusFormId");
+  let roverSheetId = documentLinks.get("roverSheetId");
+  if (needsUpdate(statusFormId, links.statusDocId)) {
+    copyTemplates();
+    let responseObjects = readResponseObjects(statusFormId);
     let statusMap = getStatusMap(responseObjects);
-    insertStatus(links.statusDocId, links.roverSheetId, statusMap, responseObjects.length);
-    let form = FormApp.openById(links.statusFormId);
+    insertStatus(links.statusDocId, roverSheetId, statusMap, responseObjects.length);
+    let form = FormApp.openById(statusFormId);
     return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
   } else {
     return "There is no status entry since document was generated";
@@ -220,6 +248,19 @@ function needsUpdate(formId, statusDocId) {
     let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
     console.log("The doc was last updated on " + lastUpdate);
     return lastStatus > lastUpdate;
+  }
+}
+
+function copyTemplates() {
+  let copiedDocs = new Set();
+  let sheetNames = ["Initiative", "Manager"];
+  for (sheetName of sheetNames) {
+    for (let links of documentLinks.get(sheetName).values()) {
+      if (!copiedDocs.has(links.statusDocId)) {
+        copyTemplate(links.templateDocId, links.statusDocId);
+        copiedDocs.add(links.statusDocId);
+      }
+    }
   }
 }
 
@@ -665,6 +706,29 @@ function compareAssignments() {
     }
   }
   return [noAssignment, noActivity];
+}
+
+function printMismatch() {
+  let response = "";
+  let mismatch = compareAssignments();
+  if (mismatch[0].size > 0) {
+    response += "<p>Activities outside of Roster assignments";
+  }
+  for (let kerberos of mismatch[0].keys()) {
+    response += "<br/>" + kerberos + ": ";
+    response += mismatch[0].get(kerberos).join(", ");
+  }
+  if (mismatch[1].size > 0) {
+    response += "<p>Assignments without any activity this week";
+  }
+  for (let kerberos of mismatch[1].keys()) {
+    response += "<br/>" + kerberos + ": ";
+    response += mismatch[1].get(kerberos).join(", ");
+  }
+  if (response.length === 0) {
+    response = "No missing status entries this week";
+  }
+  console.log(response);
 }
 
 function isOnPTO(email) {
