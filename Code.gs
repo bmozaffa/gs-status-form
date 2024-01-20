@@ -1,31 +1,25 @@
-let documentLinks = new Map();
-getDocumentLinks();
+let documentLinks = getDocumentLinks();
+let globalLinks = getGlobalLinks();
 
 function getDocumentLinks() {
+  let docsLinks = new Map()
   let spreadsheet = SpreadsheetApp.openById("1RKF97_z2ruAgUJvxcoArlVt3JEtoFjfLB-spycO3GHw");
-  let sheetNames = ["Initiative", "Manager"];
+  let sheetNames = ["Initiatives", "Managers", "Templates"];
   for (sheetName of sheetNames) {
     let map = new Map();
     let sheet = spreadsheet.getSheetByName(sheetName);
     for (let row = 2; row <= sheet.getLastRow(); row++) {
       let key = sheet.getRange(row, 1, 1, 1).getValue();
       if (key.length > 0) {
-        let value = {
-          "statusDocId": sheet.getRange(row, 2, 1, 1).getValue(),
-          "templateDocId": sheet.getRange(row, 3, 1, 1).getValue()
-        }
-        map.set(key, value);
+        map.set(key, sheet.getRange(row, 2, 1, 1).getValue());
       }
     }
-    documentLinks.set(sheetName, map);
+    docsLinks.set(sheetName, map);
   }
-
-  let links = getLinks();
-  documentLinks.set("statusFormId", links.statusFormId);
-  documentLinks.set("roverSheetId", links.roverSheetId);
+  return docsLinks;
 }
 
-function getLinks() {
+function getGlobalLinks() {
   let links = {};
   links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
@@ -208,16 +202,18 @@ function compileStatus() {
   if (utils.isPaused('compileStatus')) {
     return;
   }
-  //All status documents are currently updated at the same time, so grab any random status doc:
-  let links = documentLinks.get("Initiative").values().next().value;
-  let statusFormId = documentLinks.get("statusFormId");
-  let roverSheetId = documentLinks.get("roverSheetId");
-  if (needsUpdate(statusFormId, links.statusDocId)) {
-    copyTemplates();
-    let responseObjects = readResponseObjects(statusFormId);
+  let updateNeeded = false;
+  for (let statusDocId of documentLinks.get("Templates").keys()) {
+    if (needsUpdate(globalLinks.statusFormId, statusDocId)) {
+      copyTemplate(documentLinks.get("Templates").get(statusDocId), statusDocId);
+      updateNeeded = true;
+    }
+  }
+  if (updateNeeded) {
+    let responseObjects = readResponseObjects(globalLinks.statusFormId);
     let statusMap = getStatusMap(responseObjects);
-    insertStatus(links.statusDocId, roverSheetId, statusMap, responseObjects.length);
-    let form = FormApp.openById(statusFormId);
+    // insertStatus(statusDocId, globalLinks.roverSheetId, statusMap, responseObjects.length);
+    let form = FormApp.openById(globalLinks.statusFormId);
     return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
   } else {
     return "There is no status entry since document was generated";
