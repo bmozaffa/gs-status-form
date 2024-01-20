@@ -77,9 +77,7 @@ function doGet(e) {
 }
 
 function getMissingStatusReport() {
-  let links = getLinks();
-  let formMap = readForm(links.statusFormId);
-  let missing = getMissingStatus(formMap, links.roverSheetId);
+  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
     let associateInfo = missing.kerberosMap.get(kerberos);
@@ -97,9 +95,7 @@ function notifyMissingStatus() {
   if (utils.isPaused('notifyMissingStatus')) {
     return;
   }
-  let links = getLinks();
-  let formMap = readForm(links.statusFormId);
-  let missing = getMissingStatus(formMap, links.roverSheetId);
+  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
 
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
@@ -115,7 +111,7 @@ function notifyMissingStatus() {
   });
 }
 
-function getMissingStatus(formMap, roverSheetId) {
+function getMissingStatus(responseObjects, statusDocId) {
   //Figure out who need to submit status report
   let statusRequired = new Set();
   const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
@@ -133,11 +129,9 @@ function getMissingStatus(formMap, roverSheetId) {
   });
 
   //Remove from the list those who have reported status
-  formMap.forEach(statusList => {
-    statusList.forEach(responseObject => {
-      statusRequired.delete(responseObject.kerberos);
-    });
-  });
+  for (let responseObj of responseObjects) {
+    statusRequired.delete(responseObj.kerberos);
+  }
 
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of statusRequired) {
@@ -155,8 +149,7 @@ function getMissingStatus(formMap, roverSheetId) {
 }
 
 function archiveReports(days) {
-  let links = getLinks();
-  let form = FormApp.openById(links.statusFormId);
+  let form = FormApp.openById(globalLinks.statusFormId);
   let cutoff = new Date();
   if (!days) {
     days = 7;
@@ -178,8 +171,7 @@ function archiveReports(days) {
 }
 
 function logStatus() {
-  let links = getLinks();
-  let map = readForm(links.statusFormId);
+  let map = readForm(globalLinks.statusFormId);
   map.forEach((statusList, category) => {
     if (category === "PTO / Learning / No Status") {
       statusList.forEach(responseObject => {
@@ -412,7 +404,7 @@ function getMapArray(map, key) {
   return array;
 }
 
-function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
+function insertStatus(statusDocId, statusMap, responseCount) {
   let reportedCount = 0;
   let doc;
   try {
@@ -499,7 +491,7 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
       });
       statusMap.delete(key);
     } else if (key === "Missing Status") {
-      let missing = getMissingStatus(statusMap, roverSheetId);
+      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
       missing.statusRequired.forEach(kerberos => {
         let associateInfo = missing.kerberosMap.get(kerberos);
         let associateName = associateInfo.get("Name").split(" ")[0];
@@ -625,8 +617,7 @@ function createDraftEmails() {
   if (utils.isPaused('createDraftEmails')) {
     return;
   }
-  const spreadsheetId = getLinks().statusEmailsId;
-  let sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName("emails");
+  let sheet = SpreadsheetApp.openById(globalLinks.statusEmailsId).getSheetByName("emails");
   var drafts = [];
   let values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
 
@@ -671,7 +662,7 @@ function sendDraftEmails() {
 
 function compareAssignments() {
   let statusMap = new Map();
-  let responseObjects = readResponseObjects(getLinks().statusFormId);
+  let responseObjects = readResponseObjects(globalLinks.statusFormId);
   responseObjects.forEach(responseObject => {
     let statusArray = getMapArray(statusMap, responseObject.kerberos);
     let initiative = responseObject.initiative;
