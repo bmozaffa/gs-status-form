@@ -134,6 +134,29 @@ function getMissingStatus(responseObjects, statusDocId) {
     statusRequired.delete(responseObj.kerberos);
   }
 
+  //When statusDocId is provided, only report missing status for associates relevant to this document
+  if (statusDocId) {
+    let userAssignmentMap = getUserAssignmentMap();
+    nextUser: for (let kerberos of statusRequired) {
+      //Check if user's manager owns this status
+      let associateInfo = kerberosMap.get(kerberos);
+      let managerUID = associateInfo.get("Manager UID");
+      if (documentLinks.get("Managers").get(managerUID) === statusDocId ) {
+        continue nextUser;
+      }
+
+      //Check if user's assignments belong in this status doc
+      if (userAssignmentMap.has(kerberos)) {
+        for (let initiative of userAssignmentMap.get(kerberos)) {
+          if (documentLinks.get("Initiatives").get(initiative) === statusDocId ) {
+            continue nextUser;
+          }
+        }
+      }
+      //If there was no match based on manager or initiative, the user status is not required for THIS status doc
+      statusRequired.delete(kerberos);
+    }
+  }
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of statusRequired) {
     if (isOnPTO(kerberos.concat("@redhat.com"))) {
@@ -213,7 +236,7 @@ function compileStatus() {
         }
       }
       let statusMap = getStatusMap(responseObjects);
-      insertStatus(statusDocId, globalLinks.roverSheetId, statusMap, responseObjects.length);
+      insertStatus(statusDocId, statusMap, responseObjects.length);
     }
     let form = FormApp.openById(globalLinks.statusFormId);
     return "Successfully generated status reports based on " + form.getResponses().length + " form submissions";
@@ -492,7 +515,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       });
       statusMap.delete(key);
     } else if (key === "Missing Status") {
-      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
+      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), statusDocId);
       missing.statusRequired.forEach(kerberos => {
         let associateInfo = missing.kerberosMap.get(kerberos);
         let associateName = associateInfo.get("Name").split(" ")[0];
@@ -739,7 +762,6 @@ function printMismatch() {
 }
 
 function isOnPTO(email) {
-  return false;
   //Look for events on user calendar right now to increase performance
   let nextMinute = new Date();
   nextMinute.setMinutes(nextMinute.getMinutes() + 2);
