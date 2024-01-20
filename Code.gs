@@ -78,7 +78,8 @@ function doGet(e) {
 }
 
 function getMissingStatusReport() {
-  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
+  let allStatusDocumentIds = Array.from(documentLinks.get("Templates").keys())
+  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), allStatusDocumentIds);
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
     let associateInfo = missing.kerberosMap.get(kerberos);
@@ -96,7 +97,8 @@ function notifyMissingStatus() {
   if (utils.isPaused('notifyMissingStatus')) {
     return;
   }
-  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId));
+  let allStatusDocumentIds = Array.from(documentLinks.get("Templates").keys())
+  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), allStatusDocumentIds);
 
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
@@ -112,7 +114,7 @@ function notifyMissingStatus() {
   });
 }
 
-function getMissingStatus(responseObjects, statusDocId) {
+function getMissingStatus(responseObjects, statusDocIds) {
   //Figure out who need to submit status report
   let statusRequired = new Set();
   const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
@@ -134,28 +136,26 @@ function getMissingStatus(responseObjects, statusDocId) {
     statusRequired.delete(responseObj.kerberos);
   }
 
-  //When statusDocId is provided, only report missing status for associates relevant to this document
-  if (statusDocId) {
-    let userAssignmentMap = getUserAssignmentMap();
-    nextUser: for (let kerberos of statusRequired) {
-      //Check if user's manager owns this status
-      let associateInfo = kerberosMap.get(kerberos);
-      let managerUID = associateInfo.get("Manager UID");
-      if (documentLinks.get("Managers").get(managerUID) === statusDocId ) {
-        continue nextUser;
-      }
+  //Only report missing status for associates relevant to provided status documents
+  let userAssignmentMap = getUserAssignmentMap();
+  nextUser: for (let kerberos of statusRequired) {
+    //Check if user's manager owns this status
+    let associateInfo = kerberosMap.get(kerberos);
+    let managerUID = associateInfo.get("Manager UID");
+    if (statusDocIds.includes(documentLinks.get("Managers").get(managerUID))) {
+      continue;
+    }
 
-      //Check if user's assignments belong in this status doc
-      if (userAssignmentMap.has(kerberos)) {
-        for (let initiative of userAssignmentMap.get(kerberos)) {
-          if (documentLinks.get("Initiatives").get(initiative) === statusDocId ) {
-            continue nextUser;
-          }
+    //Check if user's assignments belong in this status doc
+    if (userAssignmentMap.has(kerberos)) {
+      for (let initiative of userAssignmentMap.get(kerberos)) {
+        if (statusDocIds.includes(documentLinks.get("Initiatives").get(initiative))) {
+          continue nextUser;
         }
       }
-      //If there was no match based on manager or initiative, the user status is not required for THIS status doc
-      statusRequired.delete(kerberos);
     }
+    //If there was no match based on manager or initiative, the user status is not required for THIS status doc
+    statusRequired.delete(kerberos);
   }
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of statusRequired) {
@@ -515,7 +515,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       });
       statusMap.delete(key);
     } else if (key === "Missing Status") {
-      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), statusDocId);
+      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), [statusDocId]);
       missing.statusRequired.forEach(kerberos => {
         let associateInfo = missing.kerberosMap.get(kerberos);
         let associateName = associateInfo.get("Name").split(" ")[0];
