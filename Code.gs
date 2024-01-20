@@ -248,7 +248,7 @@ function matchesStatusDoc(responseObject, statusDocId) {
   if (initiativeDocId) {
     return initiativeDocId === statusDocId;
   } else {
-    let associateInfo = kerberosMap.get(kerberos);
+    let associateInfo = kerberosMap.get(responseObject.kerberos);
     let managerUID = associateInfo.get("Manager UID");
     return documentLinks.get("Managers").get(managerUID) === statusDocId;
   }
