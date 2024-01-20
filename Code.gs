@@ -25,6 +25,7 @@ function getGlobalLinks() {
   links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
+  links.rosterSheetId = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
   return links;
 }
 
@@ -674,23 +675,10 @@ function compareAssignments() {
     }
   });
 
-  let assignmentMap = new Map();
-  let roster = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
-  let assignmentSheet = SpreadsheetApp.openById(roster).getSheetByName("Roster by Person");
-  for (let row = 3; row < 200; row++) {
-    let values = assignmentSheet.getRange(row, 1, row, 5).getValues();
-    let kerberos = values[0][4];
-    if (kerberos.length === 0) {
-      break;
-    }
-    let assignmentArray = getMapArray(assignmentMap, kerberos);
-    assignmentArray.push(values[0][1]);
-  }
-
+  let assignmentMap = getUserAssignmentMap();
   let noActivity = new Map();
   let noAssignment = new Map();
-  for (let kerberos of assignmentMap.keys()) {
-    let assignments = assignmentMap.get(kerberos);
+  for (let [kerberos, assignments] of assignmentMap) {
     let statuses = statusMap.get(kerberos);
     if (assignments === undefined && statuses !== undefined) {
       noAssignment.set(kerberos, statuses);
@@ -710,6 +698,21 @@ function compareAssignments() {
     }
   }
   return [noAssignment, noActivity];
+}
+
+function getUserAssignmentMap() {
+  let assignmentMap = new Map();
+  let assignmentSheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Roster by Person");
+  for (let row = 3; row < 200; row++) {
+    let values = assignmentSheet.getRange(row, 1, row, 5).getValues();
+    let kerberos = values[0][4];
+    if (kerberos.length === 0) {
+      break;
+    }
+    let assignmentArray = getMapArray(assignmentMap, kerberos);
+    assignmentArray.push(values[0][1]);
+  }
+  return assignmentMap;
 }
 
 function printMismatch() {
@@ -736,6 +739,7 @@ function printMismatch() {
 }
 
 function isOnPTO(email) {
+  return false;
   //Look for events on user calendar right now to increase performance
   let nextMinute = new Date();
   nextMinute.setMinutes(nextMinute.getMinutes() + 2);
