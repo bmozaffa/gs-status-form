@@ -1,5 +1,6 @@
 let documentLinks = getDocumentLinks();
 let globalLinks = getGlobalLinks();
+let kerberosMap = getKerberosMap(globalLinks.roverSheetId);
 
 function getDocumentLinks() {
   let docsLinks = new Map()
@@ -115,11 +116,9 @@ function notifyMissingStatus() {
 }
 
 function getMissingStatus(formMap, roverSheetId) {
-  let kerberosMap = getKerberosMap(roverSheetId);
-
   //Figure out who need to submit status report
   let statusRequired = new Set();
-  const excludedStatus = ["Director, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
+  const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
   kerberosMap.forEach((value, key) => {
     if (excludedStatus.includes(value.get("Job Title"))) {
       //Exclude managers from status entry
@@ -181,7 +180,6 @@ function archiveReports(days) {
 function logStatus() {
   let links = getLinks();
   let map = readForm(links.statusFormId);
-  let kerberosMap = getKerberosMap(links.roverSheetId);
   map.forEach((statusList, category) => {
     if (category === "PTO / Learning / No Status") {
       statusList.forEach(responseObject => {
@@ -223,9 +221,9 @@ function compileStatus() {
       }
       let statusMap = getStatusMap(responseObjects);
       insertStatus(statusDocId, globalLinks.roverSheetId, statusMap, responseObjects.length);
-      let form = FormApp.openById(globalLinks.statusFormId);
-      return "Successfully generated status report based on " + form.getResponses().length + " form submissions";
     }
+    let form = FormApp.openById(globalLinks.statusFormId);
+    return "Successfully generated status reports based on " + form.getResponses().length + " form submissions";
   }
 }
 
@@ -234,7 +232,7 @@ function matchesStatusDoc(responseObject, statusDocId) {
   if (initiativeDocId) {
     return initiativeDocId === statusDocId;
   } else {
-    let associateInfo = getKerberosMap(globalLinks.roverSheetId).get(kerberos);
+    let associateInfo = kerberosMap.get(kerberos);
     let managerUID = associateInfo.get("Manager UID");
     return documentLinks.get("Managers").get(managerUID) === statusDocId;
   }
@@ -470,7 +468,6 @@ function insertStatus(statusDocId, roverSheetId, statusMap, responseCount) {
     }
   });
 
-  let kerberosMap = getKerberosMap(roverSheetId);
   for (let index = listItemIndices.length - 1; index >= 0; index--) {
     //Iterate backwards so inserting status does not make indices invalid
     let listItem = body.getChild(listItemIndices[index]);
