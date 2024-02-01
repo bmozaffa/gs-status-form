@@ -52,29 +52,36 @@ function doGet(e) {
     let sentMessages = sendDraftEmails();
     response = "Successfully sent " + sentMessages + " emails from saved drafts";
   } else if (command === "mismatch") {
-    response = "";
-    let mismatch = compareAssignments();
-    if (mismatch[0].size > 0) {
-      response += "<p>Activities outside of Roster assignments";
-    }
-    for (let kerberos of mismatch[0].keys()) {
-      response += "<br/>" + kerberos + ": ";
-      response += mismatch[0].get(kerberos).join(", ");
-    }
-    if (mismatch[1].size > 0) {
-      response += "<p>Assignments without any activity this week";
-    }
-    for (let kerberos of mismatch[1].keys()) {
-      response += "<br/>" + kerberos + ": ";
-      response += mismatch[1].get(kerberos).join(", ");
-    }
-    if (response.length === 0) {
-      response = "No missing status entries this week";
-    }
+    response = getMismatchResponse();
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
   return HtmlService.createHtmlOutput(response);
+}
+
+function getMismatchResponse() {
+  let mismatch = compareAssignments();
+  if (mismatch[0].size > 0) {
+    response += "<p>Activities outside of Roster assignments";
+  }
+  for (let kerberos of mismatch[0].keys()) {
+    response += "<br/>" + kerberos + ": ";
+    response += mismatch[0].get(kerberos).join(", ");
+  }
+  if (mismatch[1].size > 0) {
+    response += "<p>Associates with neither activity nor assignment";
+  }
+  for (let kerberos of mismatch[1]) {
+    response += "<br/>" + kerberos;
+  }
+  if (mismatch[2].size > 0) {
+    response += "<p>Assignments without any activity this week";
+  }
+  for (let kerberos of mismatch[2].keys()) {
+    response += "<br/>" + kerberos + ": ";
+    response += mismatch[2].get(kerberos).join(", ");
+  }
+  return response;
 }
 
 function getMissingStatusReport() {
@@ -684,26 +691,43 @@ function sendDraftEmails() {
 }
 
 function compareAssignments() {
-  let statusMap = new Map();
-  let responseObjects = readResponseObjects(globalLinks.statusFormId);
-  responseObjects.forEach(responseObject => {
-    let statusArray = getMapArray(statusMap, responseObject.kerberos);
-    let initiative = responseObject.initiative;
-    if (initiative === 'FSI') {
-      initiative = responseObject.effort;
+  let userAssignmentMap = getUserAssignmentMap();
+  nextUser: for (let kerberos of userAssignmentMap.keys()) {
+    //Check if user's manager is using the weekly status framework
+    let associateInfo = kerberosMap.get(kerberos);
+    let managerUID = associateInfo.get("Manager UID");
+    if (documentLinks.get("Managers").has(managerUID)) {
+      continue;
     }
-    if (initiative !== 'PTO / Learning / No Status') {
-      statusArray.push(initiative);
-    }
-  });
 
-  let assignmentMap = getUserAssignmentMap();
+    //Check if user's assignments leverage the weekly status framework
+    for (let initiative of userAssignmentMap.get(kerberos)) {
+      if (documentLinks.get("Initiatives").has(initiative)) {
+        continue nextUser;
+      }
+    }
+    //If there was no match based on manager or initiative, the user status is not required for weekly status compilation
+    userAssignmentMap.delete(kerberos);
+  }
+
+  //Remove from the list those who are on PTO as per their personal calendars
+  for (let kerberos of userAssignmentMap.keys()) {
+    if (isOnPTO(kerberos.concat("@redhat.com"))) {
+      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", kerberosMap.get(kerberos).get("Name"));
+      userAssignmentMap.delete(kerberos);
+    }
+  }
+
+  let statusMap = getStatusMap(readResponseObjects(globalLinks.statusFormId));
   let noActivity = new Map();
   let noAssignment = new Map();
-  for (let [kerberos, assignments] of assignmentMap) {
+  let benched = new Set();
+  for (let [kerberos, assignments] of userAssignmentMap) {
     let statuses = statusMap.get(kerberos);
     if (assignments === undefined && statuses !== undefined) {
       noAssignment.set(kerberos, statuses);
+    } else if (assignments === undefined && statuses === undefined) {
+      benched.add(kerberos);
     } else if (assignments !== undefined && statuses === undefined) {
       noActivity.set(kerberos, assignments);
     } else if (assignments !== undefined && statuses !== undefined) {
@@ -719,14 +743,14 @@ function compareAssignments() {
       });
     }
   }
-  return [noAssignment, noActivity];
+  return [noAssignment, benched, noActivity];
 }
 
 function getUserAssignmentMap() {
   let assignmentMap = new Map();
   let assignmentSheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Roster by Person");
-  for (let row = 3; row < 200; row++) {
-    let values = assignmentSheet.getRange(row, 1, row, 5).getValues();
+  for (let row = 3; row < assignmentSheet.getLastRow(); row++) {
+    let values = assignmentSheet.getRange(row, 1, 1, 5).getValues();
     let kerberos = values[0][4];
     if (kerberos.length === 0) {
       break;
@@ -734,26 +758,21 @@ function getUserAssignmentMap() {
     let assignmentArray = getMapArray(assignmentMap, kerberos);
     assignmentArray.push(values[0][1]);
   }
+  let availabilitySheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Availability");
+  for (let row = 2; row < availabilitySheet.getLastRow(); row++) {
+    let values = availabilitySheet.getRange(row, 1, 1, 4).getValues();
+    let utilization = values[0][3];
+    if (utilization === 0) {
+      let kerberos = values[0][1];
+      console.log("%s is not assigned any tasks", values[0][0]);
+      getMapArray(assignmentMap, kerberos); // empty array pushed for associate
+    }
+  }
   return assignmentMap;
 }
 
 function printMismatch() {
-  let response = "";
-  let mismatch = compareAssignments();
-  if (mismatch[0].size > 0) {
-    response += "<p>Activities outside of Roster assignments";
-  }
-  for (let kerberos of mismatch[0].keys()) {
-    response += "<br/>" + kerberos + ": ";
-    response += mismatch[0].get(kerberos).join(", ");
-  }
-  if (mismatch[1].size > 0) {
-    response += "<p>Assignments without any activity this week";
-  }
-  for (let kerberos of mismatch[1].keys()) {
-    response += "<br/>" + kerberos + ": ";
-    response += mismatch[1].get(kerberos).join(", ");
-  }
+  let response = getMismatchResponse();
   if (response.length === 0) {
     response = "No missing status entries this week";
   }
