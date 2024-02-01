@@ -52,33 +52,34 @@ function doGet(e) {
     let sentMessages = sendDraftEmails();
     response = "Successfully sent " + sentMessages + " emails from saved drafts";
   } else if (command === "mismatch") {
-    response = getMismatchResponse();
+    response = getMismatchResponse("<p>", "<br/>");
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
   return HtmlService.createHtmlOutput(response);
 }
 
-function getMismatchResponse() {
+function getMismatchResponse(paragraphBreak, lineBreak) {
   let mismatch = compareAssignments();
+  let response = "";
   if (mismatch[0].size > 0) {
-    response += "<p>Activities outside of Roster assignments";
+    response += paragraphBreak + "Activities outside of Roster assignments";
   }
   for (let kerberos of mismatch[0].keys()) {
-    response += "<br/>" + kerberos + ": ";
+    response += lineBreak + kerberos + ": ";
     response += mismatch[0].get(kerberos).join(", ");
   }
   if (mismatch[1].size > 0) {
-    response += "<p>Associates with neither activity nor assignment";
+    response += paragraphBreak + "Associates with neither activity nor assignment";
   }
   for (let kerberos of mismatch[1]) {
-    response += "<br/>" + kerberos;
+    response += lineBreak + kerberos;
   }
   if (mismatch[2].size > 0) {
-    response += "<p>Assignments without any activity this week";
+    response += paragraphBreak + "Assignments without any activity this week";
   }
   for (let kerberos of mismatch[2].keys()) {
-    response += "<br/>" + kerberos + ": ";
+    response += lineBreak + kerberos + ": ";
     response += mismatch[2].get(kerberos).join(", ");
   }
   return response;
@@ -155,7 +156,8 @@ function getMissingStatus(responseObjects, statusDocIds) {
 
     //Check if user's assignments belong in this status doc
     if (userAssignmentMap.has(kerberos)) {
-      for (let initiative of userAssignmentMap.get(kerberos)) {
+      for (let assignment of userAssignmentMap.get(kerberos)) {
+        let initiative = assignment.split('\.')[0]
         if (statusDocIds.includes(documentLinks.get("Initiatives").get(initiative))) {
           continue nextUser;
         }
@@ -202,7 +204,8 @@ function archiveReports(days) {
 }
 
 function logStatus() {
-  let map = readForm(globalLinks.statusFormId);
+  let responseObjects = readResponseObjects(globalLinks.statusFormId);
+  let map = getStatusMap(responseObjects);
   map.forEach((statusList, category) => {
     if (category === "PTO / Learning / No Status") {
       statusList.forEach(responseObject => {
@@ -377,11 +380,6 @@ function copyTemplate(templateDocId, statusDocId) {
   doc.saveAndClose();
 }
 
-function readForm(formId) {
-  let responseObjects = readResponseObjects(formId);
-  return getStatusMap(responseObjects);
-}
-
 function getStatusMap(responseObjects) {
   let statusMap = new Map();
   responseObjects.forEach(responseObject => {
@@ -396,6 +394,9 @@ function getStatusMap(responseObjects) {
     statusArray.push(responseObject);
   });
   return statusMap;
+}
+
+function getAssignment(responseObject) {
 }
 
 function readResponseObjects(formId) {
@@ -701,7 +702,8 @@ function compareAssignments() {
     }
 
     //Check if user's assignments leverage the weekly status framework
-    for (let initiative of userAssignmentMap.get(kerberos)) {
+    for (let assignment of userAssignmentMap.get(kerberos)) {
+      let initiative = assignment.split('\.')[0]
       if (documentLinks.get("Initiatives").has(initiative)) {
         continue nextUser;
       }
@@ -709,6 +711,22 @@ function compareAssignments() {
     //If there was no match based on manager or initiative, the user status is not required for weekly status compilation
     userAssignmentMap.delete(kerberos);
   }
+
+  let statusMap = new Map();
+  let responseObjects = readResponseObjects(globalLinks.statusFormId);
+  for (let responseObject of responseObjects) {
+    let statusArray = getMapArray(statusMap, responseObject.kerberos);
+    let assignment;
+    if (responseObject.initiative === 'PTO / Learning / No Status') {
+      userAssignmentMap.delete(responseObject.kerberos);
+      continue;
+    } else if (responseObject.effort) {
+      assignment = responseObject.initiative + "." + responseObject.effort;
+    } else {
+      assignment = responseObject.initiative + "." + responseObject.initiative;//Effort will be listed with the same value as initiative
+    }
+    statusArray.push(assignment);
+  };
 
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of userAssignmentMap.keys()) {
@@ -718,7 +736,6 @@ function compareAssignments() {
     }
   }
 
-  let statusMap = getStatusMap(readResponseObjects(globalLinks.statusFormId));
   let noActivity = new Map();
   let noAssignment = new Map();
   let benched = new Set();
@@ -756,7 +773,7 @@ function getUserAssignmentMap() {
       break;
     }
     let assignmentArray = getMapArray(assignmentMap, kerberos);
-    assignmentArray.push(values[0][1]);
+    assignmentArray.push(values[0][0] + "." + values[0][1]);
   }
   let availabilitySheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Availability");
   for (let row = 2; row < availabilitySheet.getLastRow(); row++) {
@@ -772,7 +789,7 @@ function getUserAssignmentMap() {
 }
 
 function printMismatch() {
-  let response = getMismatchResponse();
+  let response = getMismatchResponse("\n\n\n", "\n");
   if (response.length === 0) {
     response = "No missing status entries this week";
   }
