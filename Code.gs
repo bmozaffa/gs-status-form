@@ -396,9 +396,6 @@ function getStatusMap(responseObjects) {
   return statusMap;
 }
 
-function getAssignment(responseObject) {
-}
-
 function readResponseObjects(formId) {
   let form = FormApp.openById(formId);
   let responses = form.getResponses();
@@ -720,10 +717,8 @@ function compareAssignments() {
     if (responseObject.initiative === 'PTO / Learning / No Status') {
       userAssignmentMap.delete(responseObject.kerberos);
       continue;
-    } else if (responseObject.effort) {
-      assignment = responseObject.initiative + "." + responseObject.effort;
     } else {
-      assignment = responseObject.initiative + "." + responseObject.initiative;//Effort will be listed with the same value as initiative
+      assignment = responseObject.initiative;
     }
     statusArray.push(assignment);
   };
@@ -773,7 +768,7 @@ function getUserAssignmentMap() {
       break;
     }
     let assignmentArray = getMapArray(assignmentMap, kerberos);
-    assignmentArray.push(values[0][0] + "." + values[0][1]);
+    assignmentArray.push(values[0][0]);
   }
   let availabilitySheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Availability");
   for (let row = 2; row < availabilitySheet.getLastRow(); row++) {
