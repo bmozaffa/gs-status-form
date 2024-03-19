@@ -2,6 +2,52 @@ let documentLinks = getDocumentLinks();
 let globalLinks = getGlobalLinks();
 let kerberosMap = getKerberosMap(globalLinks.roverSheetId);
 
+function testDoc() {
+  let docId = "1_R3aSG5rTiAP3a14R2_L5MK1oryjGSzPD0Y1m_fLO_s";
+  let templateId = "1TQKiz8bazh5GG05I5Z5jwAVpcHs6t-lau-UaNaJZDdM";
+  copyTemplate(templateId, docId);
+  let doc = DocumentApp.openById(docId);
+  let body = doc.getBody();
+  let listItem = body.getChild(5).asListItem();
+  let inserted = body.insertListItem(6, listItem.copy()).editAsText();
+  inserted.setText("");
+  let statusText = [{
+    isLink: false,
+    text: "Feast Community Contributions "
+  }, {
+    isLink: true,
+    url: "https://issues.redhat.com/browse/FFS-30",
+    text: "jira"
+  }, {
+    isLink: false,
+    text: ":\u000A"
+  }, {
+    isLink: false,
+    text: "Investigation and understandfing"
+  }, {
+    isLink: true,
+    url: "https://issues.redhat.com/browse/FFS-60",
+    text: "jira"
+  }, {
+    isLink: false,
+    text: "\u000A"
+  }, {
+    isLink: false,
+    text: "[By Theodor Mihalache on Tue Mar 19 2024 11:59:45 GMT-0400 (Eastern Daylight Time)]\u000A"
+  }];
+  statusText.forEach(part => {
+    inserted.appendText(part.text);
+    if (part.isLink) {
+      inserted.appendText("\u200B");
+      let endOffsetInclusive = inserted.getText().length - 2;
+      let startOffset = endOffsetInclusive - part.text.length + 1;
+      inserted.setLinkUrl(startOffset, endOffsetInclusive, part.url);
+      inserted.setForegroundColor(endOffsetInclusive + 1, endOffsetInclusive + 1, "#000000");
+    }
+  });
+  doc.saveAndClose();
+}
+
 function getDocumentLinks() {
   let docsLinks = new Map()
   let spreadsheet = SpreadsheetApp.openById("1RKF97_z2ruAgUJvxcoArlVt3JEtoFjfLB-spycO3GHw");
