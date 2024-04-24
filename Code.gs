@@ -684,9 +684,23 @@ function sendDraftEmails() {
   let emailSetup = sheet.getRange(2, 4, sheet.getLastRow() - 1, 6).getValues();
   const fwdMap = new Map(emailSetup.map((row) => [row[0], row[2]]));
 
+  let count = 0
+  let send = true;
+  while (send) {
+    try {
+      count += sendDrafts(fwdMap);
+      send = false;
+    } catch(err) {
+      Logger.log("Failed with error [%s], will try again", err);
+    }
+  }
+  return count;
+}
+
+function sendDrafts(fwdMap) {
   var drafts = GmailApp.getDrafts();
   var count = drafts.length;
-  drafts.forEach(draft => {
+  for (let draft of drafts) {
     var message = draft.getMessage();
     Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
     var sentMessage = draft.send();
@@ -695,7 +709,7 @@ function sendDraftEmails() {
       Logger.log("Forwarding to %s", forwardEmail);
       sentMessage.forward(forwardEmail);
     }
-  });
+  }
   return count;
 }
 
