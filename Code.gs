@@ -683,31 +683,23 @@ function sendDraftEmails() {
   let sheet = SpreadsheetApp.openById(globalLinks.statusEmailsId).getSheetByName("emails");
   let emailSetup = sheet.getRange(2, 4, sheet.getLastRow() - 1, 6).getValues();
   const fwdMap = new Map(emailSetup.map((row) => [row[0], row[2]]));
-
   let count = 0
-  let send = true;
-  while (send) {
-    try {
-      count += sendDrafts(fwdMap);
-      send = false;
-    } catch(err) {
-      Logger.log("Failed with error [%s], will try again", err);
-    }
-  }
-  return count;
-}
-
-function sendDrafts(fwdMap) {
-  var drafts = GmailApp.getDrafts();
-  var count = drafts.length;
-  for (let draft of drafts) {
-    var message = draft.getMessage();
-    Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
-    var sentMessage = draft.send();
-    var forwardEmail = fwdMap.get(sentMessage.getSubject());
-    if (forwardEmail) {
-      Logger.log("Forwarding to %s", forwardEmail);
-      sentMessage.forward(forwardEmail);
+  let total = GmailApp.getDrafts().length;
+  while (count < total) {
+    let drafts = GmailApp.getDrafts();
+    if (drafts.length === 0) {
+      Logger.log("Unexpected error, draft message not found and must have been processed by another thread");
+      return count;
+    } else {
+      var message = drafts[0].getMessage();
+      Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
+      var sentMessage = draft.send();
+      var forwardEmail = fwdMap.get(sentMessage.getSubject());
+      if (forwardEmail) {
+        Logger.log("Forwarding to %s", forwardEmail);
+        sentMessage.forward(forwardEmail);
+      }
+      count++;
     }
   }
   return count;
