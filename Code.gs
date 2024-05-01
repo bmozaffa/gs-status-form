@@ -686,20 +686,24 @@ function sendDraftEmails() {
   let count = 0
   let total = GmailApp.getDrafts().length;
   while (count < total) {
-    let drafts = GmailApp.getDrafts();
-    if (drafts.length === 0) {
-      Logger.log("Unexpected error, draft message not found and must have been processed by another thread");
-      return count;
-    } else {
-      var message = drafts[0].getMessage();
-      Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
-      var sentMessage = draft.send();
-      var forwardEmail = fwdMap.get(sentMessage.getSubject());
-      if (forwardEmail) {
-        Logger.log("Forwarding to %s", forwardEmail);
-        sentMessage.forward(forwardEmail);
+    try {
+      let drafts = GmailApp.getDrafts();
+      if (drafts.length === 0) {
+        Logger.log("Unexpected error, draft message not found and must have been processed by another thread");
+        return count;
+      } else {
+        var message = drafts[0].getMessage();
+        Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
+        var sentMessage = drafts[0].send();
+        var forwardEmail = fwdMap.get(sentMessage.getSubject());
+        if (forwardEmail) {
+          Logger.log("Forwarding to %s", forwardEmail);
+          sentMessage.forward(forwardEmail);
+        }
+        count++;
       }
-      count++;
+    } catch (err) {
+      console.warn("Failed to read drafts and send email, will try again", err);
     }
   }
   return count;
