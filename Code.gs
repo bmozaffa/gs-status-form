@@ -693,12 +693,17 @@ function sendDraftEmails() {
         return count;
       } else {
         var message = drafts[0].getMessage();
+        let labels = message.getThread().getLabels();
         Logger.log("Sending draft with subject [%s] addressed to %s", message.getSubject(), message.getTo());
         var sentMessage = drafts[0].send();
         var forwardEmail = fwdMap.get(sentMessage.getSubject());
         if (forwardEmail) {
           Logger.log("Forwarding to %s", forwardEmail);
           sentMessage.forward(forwardEmail);
+        }
+        let sentThread = sentMessage.getThread();
+        for (label of labels) {
+          sentThread.addLabel(label);
         }
         count++;
       }
