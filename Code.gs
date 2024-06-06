@@ -277,17 +277,29 @@ function needsUpdate(formId, statusDocId) {
     }
   });
   console.log("Got latest status entry dated " + lastStatus);
+  if (!lastStatus) {
+    return false;
+  }
 
-  let doc = DocumentApp.openById(statusDocId);
+  let body = DocumentApp.openById(statusDocId).getBody();
   let lastUpdateMessage = "This document is no longer auto-generated. It was last generated at ";
-  let paragraph = doc.getBody().getParagraphs()[0].getText();
+  let paragraph = body.getParagraphs()[0].getText();
   if (isNaN(Date.parse(paragraph.substring(lastUpdateMessage.length)))) {
     console.error("Failed to parse last update time");
     return true;
   } else {
     let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
     console.log("The doc was last updated on " + lastUpdate);
-    return lastStatus > lastUpdate;
+    if (lastStatus > lastUpdate) {
+      return true;
+    } else {
+      //Cover edge cases of errors updating the doc timestamp without updating its content
+      if (body.findText("%[A-Za-z0-9\.\/\u0020\(\)-]+%")) {
+        return true;
+      } else {
+        return false;
+      }
+    }
   }
 }
 
