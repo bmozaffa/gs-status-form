@@ -6,7 +6,7 @@ function getDocumentLinks() {
   let docsLinks = new Map()
   let spreadsheet = SpreadsheetApp.openById("1RKF97_z2ruAgUJvxcoArlVt3JEtoFjfLB-spycO3GHw");
   let sheetNames = ["Initiatives", "Managers", "Templates"];
-  for (sheetName of sheetNames) {
+  for (let sheetName of sheetNames) {
     let map = new Map();
     let sheet = spreadsheet.getSheetByName(sheetName);
     for (let row = 2; row <= sheet.getLastRow(); row++) {
@@ -14,8 +14,8 @@ function getDocumentLinks() {
       if (key.length > 0) {
         map.set(key, sheet.getRange(row, 2, 1, 1).getValue());
       }
-    }
     docsLinks.set(sheetName, map);
+    }
   }
   return docsLinks;
 }
