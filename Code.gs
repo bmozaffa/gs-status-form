@@ -14,7 +14,7 @@ function getDocumentLinks() {
       if (key.length > 0) {
         map.set(key, sheet.getRange(row, 2, 1, 1).getValue());
       }
-    docsLinks.set(sheetName, map);
+      docsLinks.set(sheetName, map);
     }
   }
   return docsLinks;
@@ -857,5 +857,54 @@ function isFullDay(event) {
     let end = Utilities.parseDate(event.end.dateTime, "UTC", 'yyyy-MM-dd\'T\'HH:mm:ssX');
     let durationHours = (end - start) / 3600000;
     return durationHours > 4;
+  }
+}
+
+function validateRecipients() {
+  if (utils.isPaused('validateRecipient')) {
+    return;
+  }
+  let sheet = SpreadsheetApp.openById(globalLinks.statusEmailsId).getSheetByName("emails");
+  let values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+  const recipients = new Set();
+  values.forEach(value => {
+    for (const index of [0, 1, 2]) {
+      for (let email of value[index].split(',')) {
+        if (email.includes('<')) {
+          email = email.match(/<([^>]*)>/)[1];
+        }
+        email = email.trim();
+        if (!email.includes('-') && email.includes('@')) {
+          //Skip email addresses with dashes in them, as they are very likely groups
+          recipients.add(email);
+        }
+      }
+    }
+  });
+  for (const email of recipients) {
+    let person = People.People.searchDirectoryPeople({
+      readMask: 'names',
+      query: email,
+      sources: [
+        'DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'
+      ]
+    });
+
+    if (person.totalSize === 1) {
+      //Proper and valid person email
+      continue;
+    }
+
+    try {
+      GroupsApp.getGroupByEmail(email);
+      //No exception implies this is a group, so no need to flag it
+      continue;
+    } catch (e) {
+    }
+
+    const subject = "Could not find " + email + " in the corporate directory!";
+    const body = "Validate whether the user still exists! Start by checking https://rover.redhat.com/people/profile/" + email.split("@")[0];
+    Logger.log(subject + "\n" + body);
+    GmailApp.sendEmail("babak@redhat.com", subject, body);
   }
 }
