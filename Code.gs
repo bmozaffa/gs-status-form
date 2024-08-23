@@ -222,6 +222,38 @@ function logStatus() {
   });
 }
 
+function testCompileStatus() {
+  // let templateId = "1I871rNsYejPBqrdX3eCsBFso8zZC34NzxeJrOKWYwNI";
+  let templateId = "1KNrtZgdzApR6-NfxY0VwrzGk3u4WRmB2JsTAE3LvgaU";
+  let statusDocId = "1ke5E5Qe0CVGX9-DI9O8q_ZmcEhEfpxWm1q5lDClOGLU";
+  copyTemplate(templateId, statusDocId);
+
+  let statusMap = new Map();
+  {
+    let statusArray = getMapArray(statusMap, "FSI.Cross cutting concerns");
+    let responseObj = {};
+    responseObj.timestamp = "Right now";
+    responseObj.kerberos = "bmozaffa";
+    responseObj.initiative = "FSI";
+    responseObj.effort = "Cross cutting concerns";
+    responseObj.epic = "";
+    responseObj.status = "Did some generic process stuff";
+    statusArray.push(responseObj);
+  }
+  {
+    let statusArray = getMapArray(statusMap, "FSI.Temenos");
+    let responseObj = {};
+    responseObj.timestamp = "Right now";
+    responseObj.kerberos = "bmozaffa";
+    responseObj.initiative = "FSI";
+    responseObj.effort = "Temenos";
+    responseObj.epic = "";
+    responseObj.status = "Did some Temenos work";
+    statusArray.push(responseObj);
+  }
+  insertStatus(statusDocId, statusMap, 1);
+}
+
 function compileStatus() {
   if (isPaused('compileStatus')) {
     return;
