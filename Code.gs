@@ -207,7 +207,7 @@ function logStatus() {
   let responseObjects = readResponseObjects(globalLinks.statusFormId);
   let map = getStatusMap(responseObjects);
   map.forEach((statusList, category) => {
-    if (category === "PTO / Learning / No Status") {
+    if ( hasNoStatus(category) ) {
       statusList.forEach(responseObject => {
         console.log(responseObject.kerberos + " has PTO / Learning / No Status");
       });
@@ -544,7 +544,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       console.log("Found %s items for %s", statuses.length, key);
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
-        if (key === "PTO / Learning / No Status") {
+        if (hasNoStatus(key)) {
           let associateInfo = kerberosMap.get(value.kerberos);
           let associateName = associateInfo.get("Name").split(" ")[0];
           inserted.setText(associateName);
@@ -784,7 +784,7 @@ function compareAssignments() {
   for (let responseObject of responseObjects) {
     let statusArray = getMapArray(statusMap, responseObject.kerberos);
     let assignment;
-    if (responseObject.initiative === 'PTO / Learning / No Status') {
+    if ( hasNoStatus(responseObject.initiative) ) {
       userAssignmentMap.delete(responseObject.kerberos);
       continue;
     } else {
@@ -938,6 +938,14 @@ function validateRecipients() {
     const body = "Validate whether the user still exists! Start by checking https://rover.redhat.com/people/profile/" + email.split("@")[0];
     Logger.log(subject + "\n" + body);
     GmailApp.sendEmail("babak@redhat.com", subject, body);
+  }
+}
+
+function hasNoStatus(category) {
+  if (category === "PTO / No Status" || category === "Learning" ) {
+    return true;
+  } else {
+    return false;
   }
 }
 
