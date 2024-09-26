@@ -44,7 +44,7 @@ function doGet(e) {
       response = "No missing status entries this week";
     }
   } else if (command === "generate") {
-    response = compileStatus();
+    response = compileStatus(e.parameter.docId);
   } else if (command === "archive") {
     let archived = archiveReports(e.parameter.days);
     response = "Successfully archived " + archived + " form submissions";
@@ -254,13 +254,20 @@ function testCompileStatus() {
   insertStatus(statusDocId, statusMap, 1);
 }
 
-function compileStatus() {
+function compileStatus(docId) {
   if (isPaused('compileStatus')) {
     return;
   }
+  let statusDocIds;
+  if (docId) {
+    statusDocIds = [docId];
+  } else {
+    statusDocIds = documentLinks.get("Templates").keys();
+  }
   let statusDocs = new Set();
-  for (let statusDocId of documentLinks.get("Templates").keys()) {
-    if (needsUpdate(globalLinks.statusFormId, statusDocId)) {
+  let lastStatusTimestamp = getLastStatusTimestamp(globalLinks.statusFormId);
+  for (let statusDocId of statusDocIds) {
+    if (needsUpdate(lastStatusTimestamp, statusDocId)) {
       copyTemplate(documentLinks.get("Templates").get(statusDocId), statusDocId);
       statusDocs.add(statusDocId);
     }
@@ -296,20 +303,24 @@ function matchesStatusDoc(responseObject, statusDocId) {
   }
 }
 
-function needsUpdate(formId, statusDocId) {
+function getLastStatusTimestamp(formId) {
   let form = FormApp.openById(formId);
-  let lastStatus;
+  let lastStatusTimestamp;
   form.getResponses().forEach(response => {
-    if (lastStatus) {
-      if (response.getTimestamp() > lastStatus) {
-        lastStatus = response.getTimestamp();
+    if (lastStatusTimestamp) {
+      if (response.getTimestamp() > lastStatusTimestamp) {
+        lastStatusTimestamp = response.getTimestamp();
       }
     } else {
-      lastStatus = response.getTimestamp();
+      lastStatusTimestamp = response.getTimestamp();
     }
   });
-  console.log("Got latest status entry dated " + lastStatus);
-  if (!lastStatus) {
+  console.log("Got latest status entry dated " + lastStatusTimestamp);
+  return lastStatusTimestamp;
+}
+
+function needsUpdate(lastStatusTimestamp, statusDocId) {
+  if (!lastStatusTimestamp) {
     return false;
   }
 
@@ -322,7 +333,7 @@ function needsUpdate(formId, statusDocId) {
   } else {
     let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
     console.log("The doc was last updated on " + lastUpdate);
-    if (lastStatus > lastUpdate) {
+    if (lastStatusTimestamp > lastUpdate) {
       return true;
     } else {
       //Cover edge cases of errors updating the doc timestamp without updating its content
@@ -377,7 +388,7 @@ function copyTemplate(templateDocId, statusDocId) {
   click.setBold(false);
   let link = refresh.appendText("here");
   refresh.appendText(" if you think more status entries are available and wish to refresh this document.")
-  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwGck8vr-ZNHVCKRg8-y1p5hfVt4Iognzm4zZoOd0WrsORfzLOKNVHk4te0-qOnHCWU/exec?command=generate");
+  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwGck8vr-ZNHVCKRg8-y1p5hfVt4Iognzm4zZoOd0WrsORfzLOKNVHk4te0-qOnHCWU/exec?command=generate&docId=" + statusDocId);
 
   let totalElements = template.getNumChildren();
   for (let index = 0; index < totalElements; index++) {
