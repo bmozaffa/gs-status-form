@@ -671,6 +671,9 @@ function getStatusParts(string) {
         text: string.substring(startIndex, result.index)
       });
     }
+    if (result[1] === "") {
+      result[1] = "link";
+    }
     statusParts.push({
       isLink: true,
       text: result[1],
