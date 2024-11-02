@@ -29,6 +29,24 @@ function getGlobalLinks() {
   return links;
 }
 
+const htmlFormatting = {
+  lineBreak: "<br/>",
+  paragraphBreak: "<p/>",
+  italicStart: "<i>",
+  italicEnd: "</i>",
+  boldStart: "<b>",
+  boldEnd: "</b>",
+};
+
+const textFormatting = {
+  lineBreak: "\n",
+  paragraphBreak: "\n\n\n",
+  italicStart: "",
+  italicEnd: "",
+  boldStart: "**",
+  boldEnd: "**",
+};
+
 function doGet(e) {
   let command = e.parameter.command;
   let response;
@@ -52,37 +70,95 @@ function doGet(e) {
     let sentMessages = sendDraftEmails();
     response = "Successfully sent " + sentMessages + " emails from saved drafts";
   } else if (command === "mismatch") {
-    response = getMismatchResponse("<p>", "<br/>");
+    response = getMismatchResponse(e.parameter.manager, htmlFormatting);
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
   return HtmlService.createHtmlOutput(response);
 }
 
-function getMismatchResponse(paragraphBreak, lineBreak) {
-  let mismatch = compareAssignments();
+function getMismatchResponse(mgrKerberos, format) {
+  if (mgrKerberos) {
+    return getMismatchAssignmentByManager(mgrKerberos, format);
+  } else {
+    let response = "";
+    for (const manager of documentLinks.get("Managers").keys()) {
+      response += kerberosMap.get(manager).get("Name") + ":" + format.lineBreak;
+      response += getMismatchAssignmentByManager(manager, format);
+      response += format.paragraphBreak;
+    }
+    return response;
+  }
+}
+
+function getMismatchAssignmentByManager(mgrKerberos, format) {
+  const fullMismatch = compareAssignments();
+  const filteredMismatch = [new Map(), new Map(), new Map()];
+  for (let i = 0; i < 3; i++) {
+    for (const kerberos of fullMismatch[i].keys()) {
+      if (kerberosMap.get(kerberos).get("Manager UID") === mgrKerberos) {
+        filteredMismatch[i].set(kerberos, fullMismatch[i].get(kerberos));
+      }
+    }
+  }
+
   let response = "";
-  if (mismatch[0].size > 0) {
-    response += paragraphBreak + "Activities outside of Roster assignments";
+  for (const kerberos of filteredMismatch[0].keys()) {
+    let associate = kerberosMap.get(kerberos).get("Name");
+    let activities = filteredMismatch[0].get(kerberos).join(" / ");
+    response += format.italicStart + associate + format.italicEnd + " reported working on " + format.boldStart + activities + format.boldEnd + " this week. The roster does not contain this assignment. This is unusual and likely reflects a missing roster assignment, although it may be ignored if it's temporary and not a significant contribution." + format.lineBreak;
   }
-  for (let kerberos of mismatch[0].keys()) {
-    response += lineBreak + kerberos + ": ";
-    response += mismatch[0].get(kerberos).join(", ");
+  if (filteredMismatch[0].size > 0) {
+    response += format.paragraphBreak;
   }
-  if (mismatch[1].size > 0) {
-    response += paragraphBreak + "Associates with neither activity nor assignment";
+  for (const kerberos of filteredMismatch[1].keys()) {
+    let associate = kerberosMap.get(kerberos).get("Name");
+    response += format.boldStart + associate + format.boldEnd + " is not assigned any work and did not report any activity.This is unsual and likely reflects a missing roster assignment, as well as a lack of activity report." + format.lineBreak;
   }
-  for (let kerberos of mismatch[1]) {
-    response += lineBreak + kerberos;
+  if (filteredMismatch[1].size > 0) {
+    response += format.paragraphBreak;
   }
-  if (mismatch[2].size > 0) {
-    response += paragraphBreak + "Assignments without any activity this week";
+  if (filteredMismatch[2].size > 0) {
+    response += "The following associates did not report any activity in the specified assignments this week. This is not unusual, especially if they are assigned multiple projects, but please review and investigate if this recurs!" + format.lineBreak;
   }
-  for (let kerberos of mismatch[2].keys()) {
-    response += lineBreak + kerberos + ": ";
-    response += mismatch[2].get(kerberos).join(", ");
+  for (const kerberos of filteredMismatch[2].keys()) {
+    let associate = kerberosMap.get(kerberos).get("Name");
+    response += format.italicStart + associate + format.italicEnd + ": " + filteredMismatch[2].get(kerberos).join(", ") + format.lineBreak;
+  }
+  if (filteredMismatch[2].size > 0) {
+    response += format.paragraphBreak;
   }
   return response;
+}
+
+function notifyMismatchAssignment() {
+  for (const manager of documentLinks.get("Managers").keys()) {
+    notifyMismatchAssignmentByManager(manager);
+  }
+}
+
+function notifyMismatchAssignmentByManager(manager) {
+  if (isPaused('notifyMismatchAssignment')) {
+    return;
+  }
+  const report = getMismatchAssignmentByManager(manager, htmlFormatting);
+  if (report.length === 0) {
+    //No mismatch, so don't send an email
+    return;
+  }
+  const me = "Babak Mozaffari <Babak@redhat.com>";
+  const managerInfo = kerberosMap.get(manager);
+  const to = managerInfo.get("Name") + " <" + managerInfo.get("Email") + ">";
+  const subject = "Mismatch between your associates' assignments and reported activity";
+  const bodyBase = "This is an automated message to notify you of mismatches detected for your team<br/><br/>";
+  const signature = getSignature();
+  const htmlBody = bodyBase + report + signature;
+  const options = {
+    cc: me,
+    from: me,
+    htmlBody: htmlBody
+  };
+  GmailApp.sendEmail(to, subject, "", options);
 }
 
 function getMissingStatusReport() {
@@ -708,9 +784,7 @@ function createDraftEmails() {
   let sheet = SpreadsheetApp.openById(globalLinks.statusEmailsId).getSheetByName("emails");
   var drafts = [];
   let values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
-
-  let signature = '<div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><br><br>Regards, Babak</div><div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><br></div></div></div></div></div></div></div></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-weight: bold; margin: 0px; padding: 0px; font-size: 14px; text-transform: capitalize;">Babak Mozaffari</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px 0px 4px; text-transform: capitalize;">He / Him / His</p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Director &amp; Distinguished Engineer</span></p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Workloads, AppDev, OpenShift AI</span></p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;">Ecosystem Engineering</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;"><a href="https://www.redhat.com/" target="_blank" style="color: rgb(0, 136, 206); margin: 0px;">Red Hat</a></p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-bottom: 4px;"></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; margin: 0px; font-size: 12px;"><span style="margin: 0px; padding: 0px;"><a href="mailto:Babak@redhat.com" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">Babak@redhat.com</a>&nbsp; &nbsp;</span><br>M: <a href="tel:+1-310-857-8604" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">+1-310-857-8604</a>&nbsp; &nbsp;&nbsp;</p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-top: 12px;"><table border="0"><tbody><tr><td width="100px" style="margin: 0px;"><a href="https://red.ht/sig" target="_blank" style="color: rgb(17, 85, 204);"><img src="https://static.redhat.com/libs/redhat/brand-assets/latest/corp/logo.png" width="90" height="auto"></a></td></tr></tbody></table></div><div style="text-align: start;color: rgb(34, 34, 34);font-size: small;"><div><div><div><div><div><div><div><div style="color: rgb(0, 0, 0);font-size: medium;"><table border="0"><tbody><tr><td width="100px"><br></td></tr></tbody></table></div></div></div></div></div></div></div></div></div>';
-
+  let signature = getSignature();
   values.forEach(value => {
     drafts.push({
       to: value[0],
@@ -735,6 +809,10 @@ function createDraftEmails() {
       draft.getMessage().getThread().addLabel(gmailLabel);
     });
   });
+}
+
+function getSignature() {
+  return '<div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><br><br>Regards, Babak</div><div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><br></div></div></div></div></div></div></div></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-weight: bold; margin: 0px; padding: 0px; font-size: 14px; text-transform: capitalize;">Babak Mozaffari</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px 0px 4px; text-transform: capitalize;">He / Him / His</p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Director &amp; Distinguished Engineer</span></p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Workloads, AppDev, OpenShift AI</span></p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;">Ecosystem Engineering</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;"><a href="https://www.redhat.com/" target="_blank" style="color: rgb(0, 136, 206); margin: 0px;">Red Hat</a></p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-bottom: 4px;"></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; margin: 0px; font-size: 12px;"><span style="margin: 0px; padding: 0px;"><a href="mailto:Babak@redhat.com" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">Babak@redhat.com</a>&nbsp; &nbsp;</span><br>M: <a href="tel:+1-310-857-8604" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">+1-310-857-8604</a>&nbsp; &nbsp;&nbsp;</p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-top: 12px;"><table border="0"><tbody><tr><td width="100px" style="margin: 0px;"><a href="https://red.ht/sig" target="_blank" style="color: rgb(17, 85, 204);"><img src="https://static.redhat.com/libs/redhat/brand-assets/latest/corp/logo.png" width="90" height="auto"></a></td></tr></tbody></table></div><div style="text-align: start;color: rgb(34, 34, 34);font-size: small;"><div><div><div><div><div><div><div><div style="color: rgb(0, 0, 0);font-size: medium;"><table border="0"><tbody><tr><td width="100px"><br></td></tr></tbody></table></div></div></div></div></div></div></div></div></div>';
 }
 
 function sendDraftEmails() {
@@ -817,16 +895,16 @@ function compareAssignments() {
 
   let noActivity = new Map();
   let noAssignment = new Map();
-  let benched = new Set();
+  let benched = new Map();
   for (let [kerberos, assignments] of userAssignmentMap) {
     let statuses = statusMap.get(kerberos);
-    if (assignments === undefined && statuses !== undefined) {
+    if (assignments.length === 0 && statuses !== undefined) {
       noAssignment.set(kerberos, statuses);
-    } else if (assignments === undefined && statuses === undefined) {
-      benched.add(kerberos);
-    } else if (assignments !== undefined && statuses === undefined) {
+    } else if (assignments.length === 0 && statuses === undefined) {
+      benched.set(kerberos, "");
+    } else if (assignments.length > 0 && statuses === undefined) {
       noActivity.set(kerberos, assignments);
-    } else if (assignments !== undefined && statuses !== undefined) {
+    } else if (assignments.length > 0 && statuses !== undefined) {
       assignments.forEach(assignment => {
         if (!statuses.includes(assignment)) {
           getMapArray(noActivity, kerberos).push(assignment);
@@ -868,11 +946,11 @@ function getUserAssignmentMap() {
 }
 
 function printMismatch() {
-  let response = getMismatchResponse("\n\n\n", "\n");
+  const response = getMismatchResponse("swkale", textFormatting);
   if (response.length === 0) {
     response = "No missing status entries this week";
   }
-  console.log(response);
+  Logger.log(response);
 }
 
 function isOnPTO(email) {
