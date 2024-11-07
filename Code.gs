@@ -1,6 +1,6 @@
-let documentLinks = getDocumentLinks();
-let globalLinks = getGlobalLinks();
-let kerberosMap = getKerberosMap(globalLinks.roverSheetId);
+const documentLinks = getDocumentLinks();
+const globalLinks = getGlobalLinks();
+const kerberosMap = getKerberosMap(globalLinks.roverSheetId);
 
 function getDocumentLinks() {
   let docsLinks = new Map()
@@ -83,7 +83,7 @@ function getMismatchResponse(mgrKerberos, format) {
   } else {
     let response = "";
     for (const manager of documentLinks.get("Managers").keys()) {
-      response += kerberosMap.get(manager).get("Name") + ":" + format.lineBreak;
+      response += getAssociateName(manager) + ":" + format.lineBreak;
       response += getMismatchAssignmentByManager(manager, format);
       response += format.paragraphBreak;
     }
@@ -96,7 +96,7 @@ function getMismatchAssignmentByManager(mgrKerberos, format) {
   const filteredMismatch = [new Map(), new Map(), new Map()];
   for (let i = 0; i < 3; i++) {
     for (const kerberos of fullMismatch[i].keys()) {
-      if (kerberosMap.get(kerberos).get("Manager UID") === mgrKerberos) {
+      if (getAssociateManager(kerberos) === mgrKerberos) {
         filteredMismatch[i].set(kerberos, fullMismatch[i].get(kerberos));
       }
     }
@@ -104,7 +104,7 @@ function getMismatchAssignmentByManager(mgrKerberos, format) {
 
   let response = "";
   for (const kerberos of filteredMismatch[0].keys()) {
-    let associate = kerberosMap.get(kerberos).get("Name");
+    let associate = getAssociateName(kerberos);
     let activities = filteredMismatch[0].get(kerberos).join(" / ");
     response += format.italicStart + associate + format.italicEnd + " reported working on " + format.boldStart + activities + format.boldEnd + " this week. The roster does not contain this assignment. This is unusual and likely reflects a missing roster assignment, although it may be ignored if it's temporary and not a significant contribution." + format.lineBreak;
   }
@@ -112,7 +112,7 @@ function getMismatchAssignmentByManager(mgrKerberos, format) {
     response += format.paragraphBreak;
   }
   for (const kerberos of filteredMismatch[1].keys()) {
-    let associate = kerberosMap.get(kerberos).get("Name");
+    let associate = getAssociateName(kerberos);
     response += format.boldStart + associate + format.boldEnd + " is not assigned any work and did not report any activity.This is unsual and likely reflects a missing roster assignment, as well as a lack of activity report." + format.lineBreak;
   }
   if (filteredMismatch[1].size > 0) {
@@ -122,7 +122,7 @@ function getMismatchAssignmentByManager(mgrKerberos, format) {
     response += "The following associates did not report any activity in the specified assignments this week. This is not unusual, especially if they are assigned multiple projects, but please review and investigate if this recurs!" + format.lineBreak;
   }
   for (const kerberos of filteredMismatch[2].keys()) {
-    let associate = kerberosMap.get(kerberos).get("Name");
+    let associate = getAssociateName(kerberos);
     response += format.italicStart + associate + format.italicEnd + ": " + filteredMismatch[2].get(kerberos).join(", ") + format.lineBreak;
   }
   if (filteredMismatch[2].size > 0) {
@@ -147,8 +147,7 @@ function notifyMismatchAssignmentByManager(manager) {
     return;
   }
   const me = "Babak Mozaffari <Babak@redhat.com>";
-  const managerInfo = kerberosMap.get(manager);
-  const to = managerInfo.get("Name") + " <" + managerInfo.get("Email") + ">";
+  const to = getAssociateName(manager) + " <" + getAssociateEmail(manager) + ">";
   const subject = "Mismatch between your associates' assignments and reported activity";
   const bodyBase = "This is an automated message to notify you of mismatches detected for your team<br/><br/>";
   const signature = getSignature();
@@ -166,10 +165,9 @@ function getMissingStatusReport() {
   let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), allStatusDocumentIds);
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
-    let associateInfo = missing.kerberosMap.get(kerberos);
-    let associateName = associateInfo.get("Name").split(" ")[0];
-    let managerUID = associateInfo.get("Manager UID");
-    let managerName = missing.kerberosMap.get(managerUID).get("Name").split(" ")[0];
+    let associateName = getAssociateName(kerberos).split(" ")[0];
+    let managerUID = getAssociateManager(kerberos);
+    let managerName = getAssociateName(managerUID).split(" ")[0];
     let associates = getMapArray(missingHierarchy, managerName);
     associates.push(associateName);
     console.log(">> %s", associateName);
@@ -187,11 +185,10 @@ function notifyMissingStatus() {
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
   missing.statusRequired.forEach(kerberos => {
-    let associateInfo = missing.kerberosMap.get(kerberos);
-    let managerInfo = missing.kerberosMap.get(associateInfo.get("Manager UID"));
-    let to = associateInfo.get("Email");
-    let cc = managerInfo.get("Email");
-    let subject = subjectBase + associateInfo.get("Name").split(" ")[0];
+    let managerInfo = getAssociateManager(kerberos);
+    let to = getAssociateEmail(kerberos);
+    let cc = getAssociateEmail(managerInfo);
+    let subject = subjectBase + getAssociateName(kerberos).split(" ")[0];
     GmailApp.sendEmail(to, subject, body, {cc: cc});
     console.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
     console.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
@@ -202,18 +199,22 @@ function getMissingStatus(responseObjects, statusDocIds) {
   //Figure out who need to submit status report
   let statusRequired = new Set();
   const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
-  kerberosMap.forEach((value, key) => {
-    if (excludedStatus.includes(value.get("Job Title"))) {
-      //Exclude managers from status entry
-    } else if (value.get("Job Title").includes("Director")) {
-      //Exclude directors from missing entry
-    } else if (value.get("Job Title").includes("Intern")) {
-      //Exclude interns from missing entry
-    } else if (key) {
-      //Add entry only if non-empty
-      statusRequired.add(key);
+  for (let kerberos of getAllUsers()) {
+    const title = getAssociateTitle(kerberos);
+    if (kerberos.length === 0) {
+      console.log("wait");
     }
-  });
+    if (excludedStatus.includes(title)) {
+      //Exclude managers from status entry
+    } else if (title.includes("Director")) {
+      //Exclude directors from missing entry
+    } else if (title.includes("Intern")) {
+      //Exclude interns from missing entry
+    } else if (kerberos) {
+      //Add entry only if non-empty
+      statusRequired.add(kerberos);
+    }
+  }
 
   //Remove from the list those who have reported status
   for (let responseObj of responseObjects) {
@@ -224,8 +225,7 @@ function getMissingStatus(responseObjects, statusDocIds) {
   let userAssignmentMap = getUserAssignmentMap();
   nextUser: for (let kerberos of statusRequired) {
     //Check if user's manager owns this status
-    let associateInfo = kerberosMap.get(kerberos);
-    let managerUID = associateInfo.get("Manager UID");
+    let managerUID = getAssociateManager(kerberos);
     if (statusDocIds.includes(documentLinks.get("Managers").get(managerUID))) {
       continue;
     }
@@ -245,7 +245,7 @@ function getMissingStatus(responseObjects, statusDocIds) {
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of statusRequired) {
     if (isOnPTO(kerberos.concat("@redhat.com"))) {
-      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", kerberosMap.get(kerberos).get("Name"));
+      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
       statusRequired.delete(kerberos);
     }
   }
@@ -253,7 +253,6 @@ function getMissingStatus(responseObjects, statusDocIds) {
   console.log("Missing status for %s people", statusRequired.size);
   let missingStatus = {};
   missingStatus.statusRequired = statusRequired;
-  missingStatus.kerberosMap = kerberosMap;
   return missingStatus;
 }
 
@@ -289,7 +288,7 @@ function logStatus() {
       });
     } else {
       statusList.forEach(responseObject => {
-        let status = getStatusText(responseObject, kerberosMap).map(status => {
+        let status = getStatusText(responseObject).map(status => {
           return status.text;
         }).join("");
         console.log(status);
@@ -373,8 +372,7 @@ function matchesStatusDoc(responseObject, statusDocId) {
   if (initiativeDocId) {
     return initiativeDocId === statusDocId;
   } else {
-    let associateInfo = kerberosMap.get(responseObject.kerberos);
-    let managerUID = associateInfo.get("Manager UID");
+    let managerUID = getAssociateManager(responseObject.kerberos);
     return documentLinks.get("Managers").get(managerUID) === statusDocId;
   }
 }
@@ -632,12 +630,11 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         if (hasNoStatus(key)) {
-          let associateInfo = kerberosMap.get(value.kerberos);
-          let associateName = associateInfo.get("Name").split(" ")[0];
+          let associateName = getAssociateName(value.kerberos).split(" ")[0];
           inserted.setText(associateName);
         } else {
           inserted.setText("");
-          getStatusText(value, kerberosMap).forEach(part => {
+          getStatusText(value).forEach(part => {
             inserted.appendText(part.text);
             if (part.isLink) {
               inserted.appendText("\u200B");
@@ -654,8 +651,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
     } else if (key === "Missing Status") {
       let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), [statusDocId]);
       missing.statusRequired.forEach(kerberos => {
-        let associateInfo = missing.kerberosMap.get(kerberos);
-        let associateName = associateInfo.get("Name").split(" ")[0];
+        let associateName = getAssociateName(kerberos).split(" ")[0];
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         inserted.setText(associateName);
       });
@@ -670,7 +666,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
           let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
           inserted.setText(">>> " + mappedKey + " - ");
           reportedCount++;
-          getStatusText(value, kerberosMap).forEach(part => {
+          getStatusText(value).forEach(part => {
             inserted.appendText(part.text);
             if (part.isLink) {
               inserted.appendText("\u200B");
@@ -704,10 +700,10 @@ function insertStatus(statusDocId, statusMap, responseCount) {
   doc.saveAndClose();
 }
 
-function getStatusText(responseObject, kerberosMap) {
-  let name = responseObject.kerberos;
-  if (kerberosMap.get(responseObject.kerberos)) {
-    name = kerberosMap.get(responseObject.kerberos).get("Name");
+function getStatusText(responseObject) {
+  let name = getAssociateName(responseObject.kerberos);
+  if (!name) {
+    name = responseObject.kerberos;
   }
   let statusParts = getStatusParts(responseObject.epic + ":\n");
   if (!responseObject.status) {
@@ -741,6 +737,30 @@ function getKerberosMap(spreadsheetId) {
     }
   });
   return map;
+}
+
+function getAllUsers() {
+  return kerberosMap.keys();
+}
+
+function getAssociateName(kerberos) {
+  const personMap = kerberosMap.get(kerberos);
+  return personMap.get("Name");
+}
+
+function getAssociateEmail(kerberos) {
+  const personMap = kerberosMap.get(kerberos);
+  return personMap.get("Email");
+}
+
+function getAssociateManager(kerberos) {
+  const personMap = kerberosMap.get(kerberos);
+  return personMap.get("Manager UID");
+}
+
+function getAssociateTitle(kerberos) {
+  const personMap = kerberosMap.get(kerberos);
+  return personMap.get("Job Title");
 }
 
 function getStatusParts(string) {
@@ -854,8 +874,7 @@ function compareAssignments() {
   let userAssignmentMap = getUserAssignmentMap();
   nextUser: for (let kerberos of userAssignmentMap.keys()) {
     //Check if user's manager is using the weekly status framework
-    let associateInfo = kerberosMap.get(kerberos);
-    let managerUID = associateInfo.get("Manager UID");
+    let managerUID = getAssociateManager(kerberos);
     if (documentLinks.get("Managers").has(managerUID)) {
       continue;
     }
@@ -888,7 +907,7 @@ function compareAssignments() {
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of userAssignmentMap.keys()) {
     if (isOnPTO(kerberos.concat("@redhat.com"))) {
-      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", kerberosMap.get(kerberos).get("Name"));
+      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
       userAssignmentMap.delete(kerberos);
     }
   }
