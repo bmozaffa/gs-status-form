@@ -49,6 +49,7 @@ const textFormatting = {
 
 function doGet(e) {
   let command = e.parameter.command;
+  Logger.log("Received a web request with the following parameters" + e.parameters)
   let response;
   if (command === "missing") {
     response = "";
