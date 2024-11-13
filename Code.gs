@@ -185,12 +185,12 @@ function notifyMissingStatus() {
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
   missing.statusRequired.forEach(kerberos => {
-    let managerInfo = getAssociateManager(kerberos);
+    let managerId = getAssociateManager(kerberos);
     let to = getAssociateEmail(kerberos);
-    let cc = getAssociateEmail(managerInfo);
+    let cc = getAssociateEmail(managerId);
     let subject = subjectBase + getAssociateName(kerberos).split(" ")[0];
     GmailApp.sendEmail(to, subject, body, {cc: cc});
-    Logger.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
+    Logger.log("%s who reports to %s is missing status, sent them an email!", getAssociateName(kerberos), getAssociateName(managerId));
     Logger.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
   });
 }
@@ -198,12 +198,9 @@ function notifyMissingStatus() {
 function getMissingStatus(responseObjects, statusDocIds) {
   //Figure out who need to submit status report
   let statusRequired = new Set();
-  const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering"];
+  const excludedStatus = ["Director, Software Engineering_Global", "Senior Manager, Software Engineering_Global", "Manager, Software Engineering", "Associate Manager, Software Engineering", "Senior Manager, SAP Alliance Technology Team"];
   for (let kerberos of getAllUsers()) {
     const title = getAssociateTitle(kerberos);
-    if (kerberos.length === 0) {
-      Logger.log("wait");
-    }
     if (excludedStatus.includes(title)) {
       //Exclude managers from status entry
     } else if (title.includes("Director")) {
@@ -731,7 +728,7 @@ function getKerberosMap(spreadsheetId) {
         record.set(header[col], value[col]);
       }
     }
-    if (isNaN(Date.parse(record.get("Separation Date")))) {
+    if (isNaN(Date.parse(record.get("Termination"))) && value[1]) {
       //Only include associates who don't have a Separation Date
       map.set(value[1], record);
     }
