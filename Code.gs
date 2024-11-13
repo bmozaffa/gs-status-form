@@ -170,7 +170,7 @@ function getMissingStatusReport() {
     let managerName = getAssociateName(managerUID).split(" ")[0];
     let associates = getMapArray(missingHierarchy, managerName);
     associates.push(associateName);
-    console.log(">> %s", associateName);
+    Logger.log(">> %s", associateName);
   });
   return missingHierarchy;
 }
@@ -190,8 +190,8 @@ function notifyMissingStatus() {
     let cc = getAssociateEmail(managerInfo);
     let subject = subjectBase + getAssociateName(kerberos).split(" ")[0];
     GmailApp.sendEmail(to, subject, body, {cc: cc});
-    console.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
-    console.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
+    Logger.log("%s who reports to %s is missing status, sent them an email!", associateInfo.get("Name"), managerInfo.get("Name"));
+    Logger.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
   });
 }
 
@@ -202,7 +202,7 @@ function getMissingStatus(responseObjects, statusDocIds) {
   for (let kerberos of getAllUsers()) {
     const title = getAssociateTitle(kerberos);
     if (kerberos.length === 0) {
-      console.log("wait");
+      Logger.log("wait");
     }
     if (excludedStatus.includes(title)) {
       //Exclude managers from status entry
@@ -245,12 +245,12 @@ function getMissingStatus(responseObjects, statusDocIds) {
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of statusRequired) {
     if (isOnPTO(kerberos.concat("@redhat.com"))) {
-      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
+      Logger.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
       statusRequired.delete(kerberos);
     }
   }
 
-  console.log("Missing status for %s people", statusRequired.size);
+  Logger.log("Missing status for %s people", statusRequired.size);
   let missingStatus = {};
   missingStatus.statusRequired = statusRequired;
   return missingStatus;
@@ -263,7 +263,7 @@ function archiveReports(days) {
     days = 7;
   }
   cutoff.setDate(cutoff.getDate() - days);
-  console.log("Cutoff is " + cutoff);
+  Logger.log("Cutoff is " + cutoff);
   responses = form.getResponses();
   let count = 0;
   let total = responses.length;
@@ -274,7 +274,7 @@ function archiveReports(days) {
     } else {
     }
   });
-  console.log("Archived " + count + " responses out of " + total);
+  Logger.log("Archived " + count + " responses out of " + total);
   return count;
 }
 
@@ -284,14 +284,14 @@ function logStatus() {
   map.forEach((statusList, category) => {
     if ( hasNoStatus(category) ) {
       statusList.forEach(responseObject => {
-        console.log(responseObject.kerberos + " has PTO / Learning / No Status");
+        Logger.log(responseObject.kerberos + " has PTO / Learning / No Status");
       });
     } else {
       statusList.forEach(responseObject => {
         let status = getStatusText(responseObject).map(status => {
           return status.text;
         }).join("");
-        console.log(status);
+        Logger.log(status);
       });
     }
   });
@@ -389,7 +389,7 @@ function getLastStatusTimestamp(formId) {
       lastStatusTimestamp = response.getTimestamp();
     }
   });
-  console.log("Got latest status entry dated " + lastStatusTimestamp);
+  Logger.log("Got latest status entry dated " + lastStatusTimestamp);
   return lastStatusTimestamp;
 }
 
@@ -406,7 +406,7 @@ function needsUpdate(lastStatusTimestamp, statusDocId) {
     return true;
   } else {
     let lastUpdate = new Date(paragraph.substring(lastUpdateMessage.length));
-    console.log("The doc was last updated on " + lastUpdate);
+    Logger.log("The doc was last updated on " + lastUpdate);
     if (lastStatusTimestamp > lastUpdate) {
       return true;
     } else {
@@ -518,7 +518,7 @@ function getStatusMap(responseObjects) {
     } else {
       mapKey = responseObject.initiative;
     }
-    console.log("Status reported for %s", mapKey);
+    Logger.log("Status reported for %s", mapKey);
     let statusArray = getMapArray(statusMap, mapKey);
     statusArray.push(responseObject);
   });
@@ -529,10 +529,10 @@ function readResponseObjects(formId) {
   let form = FormApp.openById(formId);
   let responses = form.getResponses();
   // form.getItems().forEach(value => {
-  //   console.log("item is %s", value.getTitle());
+  //   Logger.log("item is %s", value.getTitle());
   // })
   let responseObjects = [];
-  // console.log("Found %s status entries", responses.length);
+  // Logger.log("Found %s status entries", responses.length);
   responses.forEach(response => {
     let responseObj = {};
     responseObj.timestamp = response.getTimestamp();
@@ -557,7 +557,7 @@ function getMapArray(map, key) {
   if (!array) {
     array = [];
     map.set(key, array);
-    // console.log("There was no array for %s, but one has been created now", key);
+    // Logger.log("There was no array for %s, but one has been created now", key);
   }
   return array;
 }
@@ -606,10 +606,10 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       } else if (keyParts.length === 2) {
         newKey = keyParts[0] + ".Other";
       } else {
-        console.log("Assuming that key [%s] includes a .", key);
+        Logger.log("Assuming that key [%s] includes a .", key);
         newKey = keyParts[0] + ".Other";
         if (!knownStatusKeys.has(newKey)) {
-          console.log("Did not find %s as a placeholder so this must be an other category off the top: %s", newKey, keyParts[0]);
+          Logger.log("Did not find %s as a placeholder so this must be an other category off the top: %s", newKey, keyParts[0]);
           newKey = "Other";
         }
       }
@@ -623,10 +623,10 @@ function insertStatus(statusDocId, statusMap, responseCount) {
     let listItem = body.getChild(listItemIndices[index]);
     let key = listItem.getText();
     key = key.substring(1, key.length - 1);
-    // console.log("Actual key is %s", key);
+    // Logger.log("Actual key is %s", key);
     let statuses = statusMap.get(key);
     if (statuses) {
-      console.log("Found %s items for %s", statuses.length, key);
+      Logger.log("Found %s items for %s", statuses.length, key);
       statuses.forEach(value => {
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
         if (hasNoStatus(key)) {
@@ -656,7 +656,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
         inserted.setText(associateName);
       });
     } else {
-      console.log("Found no items for %s", key);
+      Logger.log("Found no items for %s", key);
     }
     let mappedStatuses = otherStatusMap.get(key);
     if (mappedStatuses) {
@@ -685,7 +685,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
 
   if (reportedCount !== responseCount) {
     let message = Utilities.formatString("Warning: there are %d status entries in the form but only %d were reported in this document", responseCount, reportedCount);
-    console.log(message);
+    Logger.log(message);
     let paragraph = body.getParagraphs()[0].editAsText();
     paragraph.setText(message);
     paragraph.setFontSize(22);
@@ -707,7 +707,7 @@ function getStatusText(responseObject) {
   }
   let statusParts = getStatusParts(responseObject.epic + ":\n");
   if (!responseObject.status) {
-    console.log(responseObject.kerberos + " does not have a status");
+    Logger.log(responseObject.kerberos + " does not have a status");
   }
   statusParts = statusParts.concat(getStatusParts(responseObject.status));
   statusParts.push({
@@ -722,7 +722,7 @@ function getKerberosMap(spreadsheetId) {
   let sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName("Rover");
   let columns = sheet.getLastColumn();
   let header = sheet.getRange(1, 1, 1, columns).getValues()[0];
-  // console.log(header);
+  // Logger.log(header);
   let values = sheet.getRange(2, 1, sheet.getLastRow(), columns).getValues();
   values.forEach(value => {
     let record = new Map();
@@ -755,7 +755,7 @@ function getAssociateEmail(kerberos) {
 
 function getAssociateManager(kerberos) {
   const personMap = kerberosMap.get(kerberos);
-  return personMap.get("Manager UID");
+  return personMap.get("Manager");
 }
 
 function getAssociateTitle(kerberos) {
@@ -764,13 +764,13 @@ function getAssociateTitle(kerberos) {
 }
 
 function getStatusParts(string) {
-  // console.log("Original string is [%s]", string);
+  // Logger.log("Original string is [%s]", string);
   let statusParts = [];
   const regex = new RegExp("\\[([^)]*)\]\\s*\\(([^\)]*)\\)", "g");
   let startIndex = 0;
   let result;
   while ((result = regex.exec(string)) !== null) {
-    // console.log(`Found ${result[0]} at ${result.index}, with text ${result[1]} and link ${result[2]}. Next starts at ${regex.lastIndex}.`);
+    // Logger.log(`Found ${result[0]} at ${result.index}, with text ${result[1]} and link ${result[2]}. Next starts at ${regex.lastIndex}.`);
     if (result.index > startIndex) {
       //There is regular text before match, that needs to be added
       statusParts.push({
@@ -864,7 +864,7 @@ function sendDraftEmails() {
         count++;
       }
     } catch (err) {
-      console.warn("Failed to read drafts and send email, will try again", err);
+      Logger.log("Failed to read drafts and send email, will try again", err);
     }
   }
   return count;
@@ -907,7 +907,7 @@ function compareAssignments() {
   //Remove from the list those who are on PTO as per their personal calendars
   for (let kerberos of userAssignmentMap.keys()) {
     if (isOnPTO(kerberos.concat("@redhat.com"))) {
-      console.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
+      Logger.log("The personal calendar of %s shows as OOO, so won't mark them as missing status", getAssociateName(kerberos));
       userAssignmentMap.delete(kerberos);
     }
   }
@@ -957,7 +957,7 @@ function getUserAssignmentMap() {
     let utilization = values[0][3];
     if (utilization === 0) {
       let kerberos = values[0][1];
-      console.log("%s is not assigned any tasks", values[0][0]);
+      Logger.log("%s is not assigned any tasks", values[0][0]);
       getMapArray(assignmentMap, kerberos); // empty array pushed for associate
     }
   }
@@ -1075,7 +1075,7 @@ function isPaused(trigger) {
         return false;
       }
       //Script is paused
-      console.log("The trigger called %s is paused with a start date of %s and end date of %s", trigger, start, end);
+      Logger.log("The trigger called %s is paused with a start date of %s and end date of %s", trigger, start, end);
       return true;
     } else if (!name) {
       return false;
