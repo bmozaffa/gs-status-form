@@ -63,7 +63,7 @@ function doGet(e) {
       response = "No missing status entries this week";
     }
   } else if (command === "generate") {
-    response = compileStatus(e.parameter.docId);
+    response = compileStatusDocs(e.parameter.docId);
   } else if (command === "archive") {
     let archived = archiveReports(e.parameter.days);
     response = "Successfully archived " + archived + " form submissions";
@@ -327,10 +327,15 @@ function testCompileStatus() {
   insertStatus(statusDocId, statusMap, 1);
 }
 
-function compileStatus(docId) {
+function compileStatus() {
+  compileStatusDocs();
+}
+
+function compileStatusDocs(docId) {
   if (isPaused('compileStatus')) {
     return;
   }
+  Logger.log("Compile status for docId %s", docId);
   let statusDocIds;
   if (docId) {
     statusDocIds = [docId];
