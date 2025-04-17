@@ -597,7 +597,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
   }
 
   let otherStatusMap = new Map();
-  statusMap.forEach((value, key) => {
+  for (const key of statusMap.keys()) {
     if (!knownStatusKeys.has(key)) {
       //Respondent must have selected other, and intended a different category for this item
       let newKey;
@@ -619,7 +619,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       let mappedCategories = getMapArray(otherStatusMap, newKey);
       mappedCategories.push(key);
     }
-  });
+  }
 
   for (let index = listItemIndices.length - 1; index >= 0; index--) {
     //Iterate backwards so inserting status does not make indices invalid
@@ -748,21 +748,37 @@ function getAllUsers() {
 
 function getAssociateName(kerberos) {
   const personMap = kerberosMap.get(kerberos);
+  if (!personMap) {
+    Logger.log("Did not find "+ kerberos);
+    return kerberos;
+  }
   return personMap.get("Name");
 }
 
 function getAssociateEmail(kerberos) {
   const personMap = kerberosMap.get(kerberos);
+  if (!personMap) {
+    Logger.log("Did not find "+ kerberos);
+    return kerberos + "@redhat.com";
+  }
   return personMap.get("Email");
 }
 
 function getAssociateManager(kerberos) {
   const personMap = kerberosMap.get(kerberos);
+  if (!personMap) {
+    Logger.log("Did not find %s's manager, rover sheet might need an update!");
+    return "bmozaffa";
+  }
   return personMap.get("Manager");
 }
 
 function getAssociateTitle(kerberos) {
   const personMap = kerberosMap.get(kerberos);
+  if (!personMap) {
+    Logger.log("Did not find "+ kerberos);
+    return "";
+  }
   return personMap.get("Job Title");
 }
 
