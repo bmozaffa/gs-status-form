@@ -26,6 +26,7 @@ function getGlobalLinks() {
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   links.rosterSheetId = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
+  links.llmEditsSheetId = "1MAOfkgHmJ1xKnVZqJx8R2qRBG6dJRv3NDXX6kKxsV2A";
   return links;
 }
 
@@ -278,6 +279,9 @@ function archiveReports(days) {
 
 function logStatus() {
   let responseObjects = readResponseObjects(globalLinks.statusFormId);
+  for (const response of allResponseObjects) {
+    response.llmEdit = getEditedVersion( response.getId() );
+  }
   let map = getStatusMap(responseObjects);
   map.forEach((statusList, category) => {
     if ( hasNoStatus(category) ) {
@@ -355,6 +359,9 @@ function compileStatusDocs(docId) {
     return "There is no status entry since document was generated";
   } else {
     let allResponseObjects = readResponseObjects(globalLinks.statusFormId);
+    for (const response of allResponseObjects) {
+      response.llmEdit = getEditedVersion( response.id );
+    }
     for (let statusDocId of statusDocs) {
       let responseObjects = [];
       for (let responseObj of allResponseObjects) {
@@ -368,6 +375,17 @@ function compileStatusDocs(docId) {
     let form = FormApp.openById(globalLinks.statusFormId);
     return "Successfully generated status reports based on " + form.getResponses().length + " form submissions";
   }
+}
+
+function getEditedVersion(responseId) {
+  let sheet = SpreadsheetApp.openById(getGlobalLinks().llmEditsSheetId).getSheetByName("Edits");
+  var sheetValues = sheet.getRange(1, 1, sheet.getLastRow(), 5).getValues();
+  for (var i = 0; i < sheetValues.length; i++) {
+    if (sheetValues[i][0] === responseId ) {
+      return sheetValues[i][4];
+    }
+  }
+  return "";
 }
 
 function matchesStatusDoc(responseObject, statusDocId) {
@@ -537,22 +555,27 @@ function readResponseObjects(formId) {
   let responseObjects = [];
   // Logger.log("Found %s status entries", responses.length);
   responses.forEach(response => {
-    let responseObj = {};
-    responseObj.timestamp = response.getTimestamp();
-    responseObj.kerberos = response.getRespondentEmail().split('@')[0];
-    let answers = response.getItemResponses()
-    responseObj.initiative = answers[0].getResponse();
-    if (answers.length >= 4) {
-      responseObj.effort = answers[1].getResponse();
-      responseObj.epic = answers[2].getResponse();
-      responseObj.status = answers[3].getResponse();
-    } else if (answers.length >= 3) {
-      responseObj.epic = answers[1].getResponse();
-      responseObj.status = answers[2].getResponse();
-    }
-    responseObjects.push(responseObj);
+    responseObjects.push( getResponseObject(response) );
   });
   return responseObjects;
+}
+
+function getResponseObject(response) {
+  let responseObj = {};
+  responseObj.id = response.getId();
+  responseObj.timestamp = response.getTimestamp();
+  responseObj.kerberos = response.getRespondentEmail().split('@')[0];
+  let answers = response.getItemResponses()
+  responseObj.initiative = answers[0].getResponse();
+  if (answers.length >= 4) {
+    responseObj.effort = answers[1].getResponse();
+    responseObj.epic = answers[2].getResponse();
+    responseObj.status = answers[3].getResponse();
+  } else if (answers.length >= 3) {
+    responseObj.epic = answers[1].getResponse();
+    responseObj.status = answers[2].getResponse();
+  }
+  return responseObj;
 }
 
 function getMapArray(map, key) {
@@ -712,7 +735,13 @@ function getStatusText(responseObject) {
   if (!responseObject.status) {
     Logger.log(responseObject.kerberos + " does not have a status");
   }
-  statusParts = statusParts.concat(getStatusParts(responseObject.status));
+  let fullStatus;
+  if (responseObject.llmEdit && responseObject.llmEdit.trim().length > 0) {
+    fullStatus = responseObject.status + "\n\nLLM edited version:\n\n" + responseObject.llmEdit;
+  } else {
+    fullStatus = responseObject.status;
+  }
+  statusParts = statusParts.concat(getStatusParts(fullStatus));
   statusParts.push({
     isLink: false,
     text: "\n[By " + name + " on " + responseObject.timestamp + "]\n"
