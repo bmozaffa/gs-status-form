@@ -49,7 +49,7 @@ function callVertexAI(prompt) {
         ],
         "generationConfig": { // Optional config
             "temperature": 0.7,
-            "maxOutputTokens": 51200
+            "maxOutputTokens": 4096
         }
         // "safetySettings": { ... } // Optional safety settings
     };
