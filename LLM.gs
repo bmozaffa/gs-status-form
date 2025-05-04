@@ -1,3 +1,5 @@
+const AI_SERVICE = "MaaS";
+
 function onNewStatusEntry(event) {
     const response = event.response;
     let edited = getEditedResponse(response);
@@ -17,17 +19,28 @@ function onNewStatusEntry(event) {
     }
 }
 
-const preprompt = 'I will provide you with one "Epic" and one "Status" entry that is written by a software engineer. The content is mostly text, but may also include Markdown style links in the format of [Link text](Link URL). Rewrite this entry as appropriate by focusing on the status part, and working the epic in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision. I want the links to be part of the text and for it to flow together seamlessly, instead of using brackets or inserting entries for the express purpose of linking. If someone is reading the status and ignoring the hyperlinks, it should read normal to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax to write the link. Some of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details.\n\n';
+const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. What follows is the jira epic or topic, as well as the status entry written by a software engineer. Rewrite this entry as appropriate by focusing on the status part, and working the epic in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision. I want the links to be part of the text and for it to flow together seamlessly, instead of providing them as disjointed and dedicated words and phrases. If someone is reading the status and ignoring the hyperlinks, it should read normal to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax in the format of [Link text](Link URL) to write the link. As far as possible, avoid using the jira ticket number (usually in the form of ABCD-1234) or GitHub repository name, and instead use plain English words that make sense in their place.\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details.\n\n';
 
 function getEditedResponse(response) {
     const responseObject = getResponseObject(response);
     if (responseObject.status) {
         const prompt = preprompt + responseObject.epic + "\n\n" + responseObject.status;
-        const vertexResponse = callVertexAI(prompt);
-        Logger.log("This API call used up %s tokens", vertexResponse.usageMetadata.totalTokenCount);
-        const edited = vertexResponse.candidates[0].content.parts[0].text;
-        Logger.log("LLM edited the status entry to\n\n%s", edited);
-        return edited;
+        if (AI_SERVICE === "MaaS") {
+            const maasResponse = callMaaS(prompt);
+            Logger.log("This API call used up %s tokens", maasResponse.usage.total_tokens);
+            const edited = maasResponse.choices[0].message.content;
+            Logger.log("LLM edited the status entry to\n\n%s", edited);
+            return edited;
+        } else if (AI_SERVICE === "VertexAI") {
+            const vertexResponse = callVertexAI(prompt);
+            Logger.log("This API call used up %s tokens", vertexResponse.usageMetadata.totalTokenCount);
+            const edited = vertexResponse.candidates[0].content.parts[0].text;
+            Logger.log("LLM edited the status entry to\n\n%s", edited);
+            return edited;
+        } else {
+            Logger.log("No AI Service configured!");
+            return "";
+        }
     } else {
         return "";
     }
@@ -202,4 +215,47 @@ function exchangeJwtForToken(serviceAccountKey, signedJwt) {
         Logger.log("Exception during token exchange request: " + e);
         return null;
     }
+}
+
+function callMaaS(prompt) {
+    const accessToken = PropertiesService.getScriptProperties().getProperty('MAAS_KEY');
+    const url = 'https://llama-3-1-8b-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1/chat/completions';
+
+    const payload = {
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4096,
+        "top_p": 1.0,
+        "stream": false
+    };
+
+    const headers = {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+    };
+
+    const options = {
+        'method': 'POST',
+        'contentType': 'application/json',
+        'headers': headers,
+        'payload': JSON.stringify(payload),
+        'muteHttpExceptions': true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseJson = JSON.parse(response.getContentText());
+
+    if (response.getResponseCode() >= 400) {
+        Logger.log("MaaS AI API error: " + response.getContentText());
+        throw new Error("MaaS AI API call failed: " + responseJson.error || "Unknown error");
+    }
+
+    Logger.log(JSON.stringify(responseJson));
+    return responseJson;
 }
