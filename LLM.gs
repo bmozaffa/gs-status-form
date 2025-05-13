@@ -19,7 +19,7 @@ function onNewStatusEntry(event) {
   }
 }
 
-const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. What follows is the jira epic or topic, as well as the status entry written by a software engineer. Rewrite this entry as appropriate by focusing on the status part, and working the epic in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision. I want the links to be part of the text and for it to flow together seamlessly, instead of providing them as disjointed and dedicated words and phrases. If someone is reading the status and ignoring the hyperlinks, it should read normal to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax in the format of [Link text](Link URL) to write the link. As far as possible, avoid using the jira ticket number (usually in the form of ABCD-1234) or GitHub repository name, and instead use plain English words that make sense in their place.\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details.\n\n';
+const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. What follows is the jira epic or topic, as well as the status entry written by a software engineer. Rewrite this entry as one or more bullet points, as action items and without adding pronouns. Focus on the status part, and working the epic in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision, but do not add any links that do not exist in the provided text. If there are links, want them to be part of the text and for it to flow together seamlessly, instead of providing them as disjointed and dedicated words and phrases. If someone is reading the status and ignoring the hyperlinks, it should read normal to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax in the format of [Link text](Link URL) to write the link. As far as possible, avoid using the jira ticket number (usually in the form of ABCD-1234) or GitHub repository name, and instead use plain English words that make sense in their place.\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details.\n\n';
 
 function getEditedResponse(response) {
   const responseObject = getResponseObject(response);
@@ -219,10 +219,10 @@ function exchangeJwtForToken(serviceAccountKey, signedJwt) {
 
 function callMaaS(prompt) {
   const accessToken = PropertiesService.getScriptProperties().getProperty('MAAS_KEY');
-  const url = 'https://llama-3-1-8b-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1/chat/completions';
+  const url = 'https://mixtral-8x7b-instruct-v0-1-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com/v1/chat/completions';
 
   const payload = {
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "messages": [
       {
         "role": "user",
