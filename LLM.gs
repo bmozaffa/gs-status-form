@@ -1,4 +1,4 @@
-const AI_SERVICE = "DeployedModel";
+const AI_SERVICE = "GeminiAPI";
 
 function simpleTestLLM() {
   console.log( getModelResponse("What is the capital of France?") );
@@ -53,7 +53,7 @@ function rewriteEditedResponses() {
   }
 }
 
-const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. What follows is the jira epic or topic, as well as the status entry written by a software engineer. Rewrite this entry as one or more bullet points, as action items and without adding pronouns. Focus on the status part, and working the epic in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision, but do not add any links that do not exist in the provided text. If there are links, want them to be part of the text and for it to flow together seamlessly, instead of providing them as disjointed and dedicated words and phrases. If someone is reading the status and ignoring the hyperlinks, it should read normal to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax in the format of [Link text](Link URL) to write the link. As far as possible, avoid using the jira ticket number (usually in the form of ABCD-1234) or GitHub repository name, and instead use plain English words that make sense in their place.\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details.\n\n';
+const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. What follows is a jira epic or a high level description of the work, followed by the status entry written by a software engineer. Rewrite these as one or more bullet points, as action items and without adding pronouns. Focus on the status part, and work the epic/context in there only if it makes sense and adds value. The output should only contain the content representing the combined status without any introductions or explanations.\n\nWhere a Markdown link is provided, include it in your revision, but do not add any links that do not exist in the provided text. If there are links, make them part of the text to flow together seamlessly, instead of providing them as disjointed and dedicated words and phrases. If someone is reading the status and ignoring the hyperlinks, it should read like normal English to them. Where a link is provided without Markdown formatting, find appropriate text to represent the link and use Markdown syntax in the format of [Link text](Link URL) to write the link. As far as possible, avoid using the jira ticket number or GitHub repository name, and instead use plain English words that make sense in their place. When you see a few characters followed by a dash and then digits, it is most likely a link to a jira ticket and if not in URL form, should be preceded by https://issues.redhat.com/browse/ and treated like a link.\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Where the status entry is overly verbose, try to shorten it and if necessary, lose some of the extra details. Do not use a period at the end of bullet points and try to use semicolons or rewriting to combine sentences to avoid periods within each bullet point. Now, rewrite this:\n\n';
 
 function getEditedResponse(responseObject) {
   if (responseObject.status) {
@@ -81,6 +81,12 @@ function getModelResponse(prompt) {
     const vertexResponse = callVertexAI(prompt);
     Logger.log("This API call used up %s tokens", vertexResponse.usageMetadata.totalTokenCount);
     const edited = vertexResponse.candidates[0].content.parts[0].text;
+    Logger.log("LLM edited the status entry to\n\n%s", edited);
+    return edited;
+  } else if (AI_SERVICE === "GeminiAPI") {
+    const geminiResponse = callGeminiAPI(prompt);
+    Logger.log("This API call used up %s tokens", geminiResponse.usageMetadata.totalTokenCount);
+    const edited = geminiResponse.candidates[0].content.parts[0].text;
     Logger.log("LLM edited the status entry to\n\n%s", edited);
     return edited;
   } else {
@@ -344,6 +350,46 @@ function callDeployedModel(prompt) {
     throw new Error("Deployed model API call failed: " + responseJson.error || "Unknown error");
   }
 
+  Logger.log(JSON.stringify(responseJson));
+  return responseJson;
+}
+
+function callGeminiAPI(prompt) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const generationConfig = {
+    temperature: 1,
+    candidateCount: 1,
+    topP: 0.95,
+    topK: 40,
+    responseMimeType: 'text/plain',
+  };
+
+  const payload = {
+    generationConfig,
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+        ],
+      },
+    ],
+  };
+
+  const options = {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload)
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  if (response.getResponseCode() >= 400) {
+    Logger.log("Deployed model API error: " + response.getContentText());
+    throw new Error("Deployed model API call failed: " + responseJson.error || "Unknown error");
+  }
+
+  const responseJson = JSON.parse(response);
   Logger.log(JSON.stringify(responseJson));
   return responseJson;
 }
