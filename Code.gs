@@ -9,13 +9,14 @@ function getDocumentLinks() {
   for (let sheetName of sheetNames) {
     let map = new Map();
     let sheet = spreadsheet.getSheetByName(sheetName);
-    for (let row = 2; row <= sheet.getLastRow(); row++) {
-      let key = sheet.getRange(row, 1, 1, 1).getValue();
-      if (key.length > 0) {
-        map.set(key, sheet.getRange(row, 2, 1, 1).getValue());
+    let range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2);
+    let values = range.getValues();
+    for (let row of values) {
+      if (row[0].length > 0) {
+        map.set(row[0], row[1]);
       }
-      docsLinks.set(sheetName, map);
     }
+    docsLinks.set(sheetName, map);
   }
   return docsLinks;
 }
@@ -880,7 +881,70 @@ function createDraftEmails() {
 }
 
 function getSignature() {
-  return '<div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><br><br><br>Regards, Babak</div><div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><br></div></div></div></div></div></div></div></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-weight: bold; margin: 0px; padding: 0px; font-size: 14px; text-transform: capitalize;">Babak Mozaffari</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px 0px 4px; text-transform: capitalize;">He / Him / His</p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Director &amp; Distinguished Engineer</span></p><p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; margin: 0px;"><span style="font-size: 12px; text-transform: capitalize;">Workloads, AppDev, OpenShift AI</span></p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;">Ecosystem Engineering</p><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;"><a href="https://www.redhat.com/" target="_blank" style="color: rgb(0, 136, 206); margin: 0px;">Red Hat</a></p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-bottom: 4px;"></div><p style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; margin: 0px; font-size: 12px;"><span style="margin: 0px; padding: 0px;"><a href="mailto:Babak@redhat.com" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">Babak@redhat.com</a>&nbsp; &nbsp;</span><br>M: <a href="tel:+1-310-857-8604" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">+1-310-857-8604</a>&nbsp; &nbsp;&nbsp;</p><div style="font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-top: 12px;"><table border="0"><tbody><tr><td width="100px" style="margin: 0px;"><a href="https://red.ht/sig" target="_blank" style="color: rgb(17, 85, 204);"><img src="https://static.redhat.com/libs/redhat/brand-assets/latest/corp/logo.png" width="90" height="auto"></a></td></tr></tbody></table></div><div style="text-align: start;color: rgb(34, 34, 34);font-size: small;"><div><div><div><div><div><div><div><div style="color: rgb(0, 0, 0);font-size: medium;"><table border="0"><tbody><tr><td width="100px"><br></td></tr></tbody></table></div></div></div></div></div></div></div></div></div>';
+  const signatureData = {
+    closing: 'Regards, Babak',
+    name: 'Babak Mozaffari',
+    pronouns: 'He / Him / His',
+    title: 'Director & Distinguished Engineer',
+    department: 'Workloads, AppDev, OpenShift AI',
+    team: 'Ecosystem Engineering',
+    company: 'Red Hat',
+    email: 'Babak@redhat.com',
+    phone: '+1-310-857-8604',
+    logoUrl: 'https://static.redhat.com/libs/redhat/brand-assets/latest/corp/logo.png',
+    companyUrl: 'https://www.redhat.com/'
+  };
+
+  return `
+    <div style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: small; margin-bottom: 20px;">
+      <br><br><br>${signatureData.closing}
+    </div>
+    
+    <p style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-weight: bold; margin: 0px; padding: 0px; font-size: 14px; text-transform: capitalize;">
+      ${signatureData.name}
+    </p>
+    
+    <p style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px 0px 4px; text-transform: capitalize;">
+      ${signatureData.pronouns}
+    </p>
+    
+    <p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0px;">
+      <span style="font-size: 12px; text-transform: capitalize;">${signatureData.title}</span>
+    </p>
+    
+    <p style="color: rgb(34, 34, 34); font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0px;">
+      <span style="font-size: 12px; text-transform: capitalize;">${signatureData.department}</span>
+    </p>
+    
+    <p style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;">
+      ${signatureData.team}
+    </p>
+    
+    <p style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: 12px; margin: 0px; text-transform: capitalize;">
+      <a href="${signatureData.companyUrl}" target="_blank" style="color: rgb(0, 136, 206); margin: 0px;">${signatureData.company}</a>
+    </p>
+    
+    <p style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; margin: 0px; font-size: 12px;">
+      <span style="margin: 0px; padding: 0px;">
+        <a href="mailto:${signatureData.email}" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">${signatureData.email}</a>&nbsp; &nbsp;
+      </span><br>
+      M: <a href="tel:${signatureData.phone}" target="_blank" style="color: rgb(0, 0, 0); margin: 0px;">${signatureData.phone}</a>&nbsp; &nbsp;&nbsp;
+    </p>
+    
+    <div style="color: rgb(0, 0, 0); font-family: RedHatText, sans-serif; font-size: medium; margin-top: 12px;">
+      <table border="0">
+        <tbody>
+          <tr>
+            <td width="100px" style="margin: 0px;">
+              <a href="https://red.ht/sig" target="_blank" style="color: rgb(17, 85, 204);">
+                <img src="${signatureData.logoUrl}" width="90" height="auto">
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function sendDraftEmails() {
