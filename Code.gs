@@ -886,7 +886,7 @@ function getSignature() {
     name: 'Babak Mozaffari',
     pronouns: 'He / Him / His',
     title: 'Director & Distinguished Engineer',
-    department: 'Workloads, AppDev, OpenShift AI',
+    department: 'Workloads, AppDev, Red Hat AI',
     team: 'Ecosystem Engineering',
     company: 'Red Hat',
     email: 'Babak@redhat.com',
