@@ -1085,12 +1085,13 @@ function printMismatch() {
 }
 
 function isOnPTO(email) {
-  //Look for events on user calendar right now to increase performance
-  let nextMinute = new Date();
-  nextMinute.setMinutes(nextMinute.getMinutes() + 2);
+  //Look for events on user calendar for today and yesterday to check PTO status
+  let yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+ 
   let params = {
-    timeMin: Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
-    timeMax: Utilities.formatDate(nextMinute, 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
+    timeMin: Utilities.formatDate(yesterday, 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
+    timeMax: Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
     showDeleted: false,
   };
   let response = Calendar.Events.list(email, params);
