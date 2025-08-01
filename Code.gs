@@ -28,6 +28,7 @@ function getGlobalLinks() {
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   links.rosterSheetId = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
   links.llmEditsSheetId = "1MAOfkgHmJ1xKnVZqJx8R2qRBG6dJRv3NDXX6kKxsV2A";
+  links.statusArchivesSheetId = "1KnuMBKUg39hLoA__hJfx2MtN9ucYBG0WYWpSvdVybxU";
   return links;
 }
 
@@ -1088,7 +1089,7 @@ function isOnPTO(email) {
   //Look for events on user calendar for today and yesterday to check PTO status
   let yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
- 
+
   let params = {
     timeMin: Utilities.formatDate(yesterday, 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
     timeMax: Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd\'T\'HH:mm:ssZ'),
