@@ -1,5 +1,28 @@
 const AI_SERVICE = "GeminiAPI";
 
+function spitOutFormResponses() {
+  let form = FormApp.openById(getGlobalLinks().statusFormId);
+  for (let response of form.getResponses()) {
+    console.log(response.getId() + " - " + response.getTimestamp());
+  }
+}
+
+function manuallyAddResponses() {
+  const responseObjects = readResponseObjects(getGlobalLinks().statusFormId);
+  const missingFormIds = ["2_ABaOnueS7S47Iehp11_O5GrstCvwgLUbbJjJwxfQAGOQXzAjZ2ghx5z9IygAej0JzLgT09U", "2_ABaOnufeA-jU4vJPGkvR3rOTMTGcg2rP9oNgEp-7Mw2uY4L6EFkI6WB9Hcq2FLE86APLRXo"];
+  let missingResponses = [];
+  for (let responseObject of responseObjects) {
+    if (missingFormIds.includes(responseObject.id)) {
+      missingResponses.push( responseObject );
+    }
+  }
+  let sheet = SpreadsheetApp.openById(getGlobalLinks().llmEditsSheetId).getSheetByName("Edits");
+  for (let response of missingResponses) {
+    let edited = getEditedResponse(response);
+    sheet.appendRow([response.id, response.kerberos + "@redhat.com", response.timestamp, getStatusEntry( response ), edited]);
+  }
+}
+
 function simpleTestLLM() {
   console.log( getModelResponse("What is the capital of France?") );
 }
@@ -159,6 +182,7 @@ function getVertexAiAccessToken() {
   let token = cache.get(cacheKey);
   if (token) {
     Logger.log('Using cached access token.');
+    Logger.log(token);
     return token;
   }
 
@@ -199,7 +223,7 @@ function createSignedJwt(serviceAccountKey) {
   };
 
   const now = Math.floor(Date.now() / 1000);
-  const expires = now + 60; // Token valid for 1 hour
+  const expires = now + 1740;//60; // Token valid for 1 hour
 
   const claimSet = {
     iss: serviceAccountKey.client_email,
