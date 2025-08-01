@@ -192,9 +192,9 @@ function notifyMissingStatus() {
     let to = getAssociateEmail(kerberos);
     let cc = getAssociateEmail(managerId);
     let subject = subjectBase + getAssociateName(kerberos).split(" ")[0];
-    GmailApp.sendEmail(to, subject, body, {cc: cc});
-    Logger.log("%s who reports to %s is missing status, sent them an email!", getAssociateName(kerberos), getAssociateName(managerId));
+    Logger.log("%s who reports to %s is missing status, send them an email!", getAssociateName(kerberos), getAssociateName(managerId));
     Logger.log("Sending an email to %s with subject line [%s] and body [%s] and copying %s", to, subject, body, cc);
+    GmailApp.sendEmail(to, subject, body, {cc: cc});
   });
 }
 
@@ -1054,7 +1054,7 @@ function compareAssignments() {
 function getUserAssignmentMap() {
   let assignmentMap = new Map();
   let assignmentSheet = SpreadsheetApp.openById(globalLinks.rosterSheetId).getSheetByName("Roster by Person");
-  for (let row = 3; row < assignmentSheet.getLastRow(); row++) {
+  for (let row = 4; row < assignmentSheet.getLastRow(); row++) {
     let values = assignmentSheet.getRange(row, 1, 1, 5).getValues();
     let kerberos = values[0][4];
     if (kerberos.length === 0) {
