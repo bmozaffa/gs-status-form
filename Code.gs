@@ -283,8 +283,8 @@ function archiveReports(days) {
 
 function logStatus() {
   let responseObjects = readResponseObjects(globalLinks.statusFormId);
-  for (const response of allResponseObjects) {
-    response.llmEdit = getEditedVersion( response.getId() );
+  for (const response of responseObjects) {
+    response.llmEdit = getEditedVersion( response );
   }
   let map = getStatusMap(responseObjects);
   map.forEach((statusList, category) => {
@@ -363,13 +363,11 @@ function compileStatusDocs(docId) {
     return "There is no status entry since document was generated";
   } else {
     let allResponseObjects = readResponseObjects(globalLinks.statusFormId);
-    for (const response of allResponseObjects) {
-      response.llmEdit = getEditedVersion( response.id );
-    }
     for (let statusDocId of statusDocs) {
       let responseObjects = [];
       for (let responseObj of allResponseObjects) {
         if (matchesStatusDoc(responseObj, statusDocId)) {
+          responseObj.llmEdit = getEditedVersion( responseObj );
           responseObjects.push(responseObj);
         }
       }
@@ -381,12 +379,15 @@ function compileStatusDocs(docId) {
   }
 }
 
-function getEditedVersion(responseId) {
+function getEditedVersion(responseObject) {
   let sheet = SpreadsheetApp.openById(getGlobalLinks().llmEditsSheetId).getSheetByName("Edits");
   var sheetValues = sheet.getRange(1, 1, sheet.getLastRow(), 5).getValues();
-  for (var i = 0; i < sheetValues.length; i++) {
-    if (sheetValues[i][0] === responseId ) {
-      return sheetValues[i][4];
+  for (let rowIndex = 0; rowIndex < sheetValues.length; rowIndex++) {
+    let row = sheetValues[rowIndex];
+    if (row[4]) {
+      if (responseObject.kerberos + "@redhat.com" === row[1] && responseObject.timestamp.getTime() === row[2].getTime()) {
+        return row[4];
+      }
     }
   }
   return "";
@@ -487,7 +488,7 @@ function copyTemplate(templateDocId, statusDocId) {
   click.setBold(false);
   let link = refresh.appendText("here");
   refresh.appendText(" if you think more status entries are available and wish to refresh this document.")
-  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbwGck8vr-ZNHVCKRg8-y1p5hfVt4Iognzm4zZoOd0WrsORfzLOKNVHk4te0-qOnHCWU/exec?command=generate&docId=" + statusDocId);
+  link.setLinkUrl("https://script.google.com/a/macros/redhat.com/s/AKfycbx_t8oIY85n8MBM_2L2dzofLmKSnxKFW5oTl5qblW0DTX7lK620cRrTpaHsH9bMggyA/exec?command=generate&docId=" + statusDocId);
 
   let totalElements = template.getNumChildren();
   for (let index = 0; index < totalElements; index++) {
@@ -569,16 +570,15 @@ function getResponseObject(response) {
   responseObj.id = response.getId();
   responseObj.timestamp = response.getTimestamp();
   responseObj.kerberos = response.getRespondentEmail().split('@')[0];
-  let answers = response.getItemResponses()
+  let answers = response.getItemResponses();
   responseObj.initiative = answers[0].getResponse();
   if (answers.length >= 4) {
     responseObj.effort = answers[1].getResponse();
     responseObj.epic = answers[2].getResponse();
-    responseObj.status = answers[3].getResponse();
   } else if (answers.length >= 3) {
     responseObj.epic = answers[1].getResponse();
-    responseObj.status = answers[2].getResponse();
   }
+  responseObj.status = answers[answers.length - 1].getResponse();
   return responseObj;
 }
 
