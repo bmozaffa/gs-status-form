@@ -2,6 +2,10 @@ const documentLinks = getDocumentLinks();
 const globalLinks = getGlobalLinks();
 const kerberosMap = getKerberosMap(globalLinks.roverSheetId);
 
+function testGetResponses() {
+  readResponseObjects(getGlobalLinks().statusFormId);
+}
+
 function getDocumentLinks() {
   let docsLinks = new Map()
   let spreadsheet = SpreadsheetApp.openById("1RKF97_z2ruAgUJvxcoArlVt3JEtoFjfLB-spycO3GHw");
@@ -571,11 +575,14 @@ function getResponseObject(response) {
   responseObj.timestamp = response.getTimestamp();
   responseObj.kerberos = response.getRespondentEmail().split('@')[0];
   let answers = response.getItemResponses();
-  if (answers.length >= 4) {
-    responseObj.effort = answers[1].getResponse();
+  responseObj.initiative = answers[0].getResponse();
+  if (answers.length >= 3) {
+    if (answers.length >= 4) {
+      responseObj.effort = answers[1].getResponse();
+    }
+    responseObj.epic = answers[answers.length - 2].getResponse();
+    responseObj.status = answers[answers.length - 1].getResponse();
   }
-  responseObj.epic = answers[answers.length - 2].getResponse();
-  responseObj.status = answers[answers.length - 1].getResponse();
   return responseObj;
 }
 
