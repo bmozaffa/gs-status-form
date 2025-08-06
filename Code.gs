@@ -571,13 +571,10 @@ function getResponseObject(response) {
   responseObj.timestamp = response.getTimestamp();
   responseObj.kerberos = response.getRespondentEmail().split('@')[0];
   let answers = response.getItemResponses();
-  responseObj.initiative = answers[0].getResponse();
   if (answers.length >= 4) {
     responseObj.effort = answers[1].getResponse();
-    responseObj.epic = answers[2].getResponse();
-  } else if (answers.length >= 3) {
-    responseObj.epic = answers[1].getResponse();
   }
+  responseObj.epic = answers[answers.length - 2].getResponse();
   responseObj.status = answers[answers.length - 1].getResponse();
   return responseObj;
 }
