@@ -874,7 +874,7 @@ function createDraftEmails() {
       }
     });
     drafts.forEach(draft => {
-      Logger.log(draft);
+      Logger.log("Sending [%s] to [%s] with [%s] in cc and [%s] in bcc. Will label as [%s]", draft.subject, draft.to, draft.options.cc, draft.options.bcc, draft.labels);
     });
   });
   drafts.forEach(params => {
