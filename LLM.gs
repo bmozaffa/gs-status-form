@@ -12,37 +12,6 @@ function onStatusFormSubmission(event) {
   return generateEditsByLLM(event.range.rowStart);
 }
 
-function generateEditsByLLM(row) {
-  const archives = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId).getSheets()[0];
-  const archivesRow = archives.getRange(row, 1, 1, archives.getLastColumn()).getValues()[0];
-  const responseObject = {
-    timestamp: archivesRow[0],
-    email: archivesRow[1],
-    initiative: archivesRow[2],
-    epic: archivesRow[6],
-    status: archivesRow[7]
-  };
-  let edited = "";
-  if (responseObject.status) {
-    edited = getModelResponse( preprompt + getStatusEntry(responseObject) );
-    edited = preserveOriginalUrls(responseObject, edited);
-  }
-  let sheet = SpreadsheetApp.openById(getGlobalLinks().llmEditsSheetId).getSheetByName("Edits");
-  var sheetValues = sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues();
-  let updatedRow;
-  for (var i = 0; i < sheetValues.length; i++) {
-    if (sheetValues[i][0] === row) {
-      updatedRow = i + 1;
-    }
-  }
-  if (updatedRow) {
-    sheet.getRange(updatedRow, 3, 1, 3).setValues([[responseObject.timestamp, getStatusEntry( responseObject ), edited]]);
-  } else {
-    sheet.appendRow([row, responseObject.email, responseObject.timestamp, responseObject.status, edited]);
-  }
-  return edited;
-}
-
 function preserveOriginalUrls(responseObject, edited) {
   const originalText = getStatusEntry(responseObject);
 
@@ -107,6 +76,37 @@ function calculateLevenshteinDistance(str1, str2) {
   }
 
   return matrix[str2.length][str1.length];
+}
+
+function generateEditsByLLM(row) {
+  const archives = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId).getSheets()[0];
+  const archivesRow = archives.getRange(row, 1, 1, archives.getLastColumn()).getValues()[0];
+  const responseObject = {
+    timestamp: archivesRow[0],
+    email: archivesRow[1],
+    initiative: archivesRow[2],
+    epic: archivesRow[6],
+    status: archivesRow[7]
+  };
+  let edited = "";
+  if (responseObject.status) {
+    edited = getModelResponse( preprompt + getStatusEntry(responseObject) );
+    edited = preserveOriginalUrls(responseObject, edited);
+  }
+  let sheet = SpreadsheetApp.openById(getGlobalLinks().llmEditsSheetId).getSheetByName("Edits");
+  var sheetValues = sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues();
+  let updatedRow;
+  for (var i = 0; i < sheetValues.length; i++) {
+    if (sheetValues[i][0] === row) {
+      updatedRow = i + 1;
+    }
+  }
+  if (updatedRow) {
+    sheet.getRange(updatedRow, 3, 1, 3).setValues([[responseObject.timestamp, getStatusEntry( responseObject ), edited]]);
+  } else {
+    sheet.appendRow([row, responseObject.email, responseObject.timestamp, responseObject.status, edited]);
+  }
+  return edited;
 }
 
 const preprompt = 'You are a technical writer reporting engineering activities to engineering leaders and stakeholders. I will provide you with either a Jira epic or a high level description of the work, followed by the status entry written by a software engineer. Rewrite these as one or more clear, concise bullet points detailing engineering activities. Avoid using pronouns. Focus on the status part, and work in the epic/context only if it makes sense and adds value. The output should only contain the content representing the combined status, without any introductions or explanations.\n\nAny string consisting of a few characters followed by a dash and then digits (e.g., APPENG-1234) should be assumed to be a Jira ticket and formatted as a Markdown link, preceded by https://issues.redhat.com/browse/. Similarly, 8-digit support case numbers should be formatted as Markdown links, preceded by https://access.redhat.com/support/cases/#/case/.\n\nWhen a Markdown link is provided, integrate it naturally into the most relevant existing words in the rewritten status, while keeping in mind that GitHub pull requests typically provide updates about bug fixes and are better fits for terms like fix or update or change, and Jira tickets are typically the bug or feature enhancement description and their links better fit such terms. **The hyperlink text should be as concise as possible, ideally 1-3 words, representing the core concept of the link without being overly descriptive.** Do not add new words or phrases solely to accommodate a link. The link text must be a natural part of the sentence structure, ensuring the status reads like normal English even if the hyperlink is ignored. If a link is provided without Markdown formatting, find the most appropriate and **brief** descriptive text from the original status, or use very minimal, direct wording, and format it as [Link text](Link URL). Avoid using Jira ticket numbers or GitHub repository names in the text; instead, use plain English that makes sense in context. **Only use Markdown for hyperlinks; do not use any other Markdown formatting like bolding or code blocks. Specifically, do not use backticks (``) for model names or other proper nouns; treat them as normal text.**\n\nSome of these engineers are non-English speakers and you may need to carefully parse their writing and make more changes. Prioritize conciseness and eliminate superfluous details. When an issue (e.g., from an epic or Jira ticket) is followed by a status describing its resolution, combine these details into a **single, non-redundant statement**. Ensure each bullet point ends without punctuation (no periods, commas, or semicolons at the very end), and use semicolons or rephrase sentences to avoid periods within the bullet point itself. Now, rewrite this:\n\n';
