@@ -13,10 +13,18 @@ function onStatusFormSubmission(event) {
 }
 
 function preserveOriginalUrls(responseObject, edited) {
-  const originalText = getStatusEntry(responseObject);
+  let originalText = getStatusEntry(responseObject);
+
+  const malformedUrlRegex = /htt?ps?:?\/\/?/g;
+  if (malformedUrlRegex.test(originalText)) {
+    const corrected = originalText.replace(malformedUrlRegex, "https://");
+    Logger.log("Found malformed URL in [%s]", originalText);
+    Logger.log("Replaced it with [%s]", corrected);
+    originalText = corrected;
+  }
 
   // Extract URLs from both original and edited text
-  const urlRegex = /https?:\/\/[^\s\)]+/g;
+  const urlRegex = /https?:?\/?\/?[^\s\)]+/g;
   const originalUrls = originalText.match(urlRegex) || [];
   const editedUrls = edited.match(urlRegex) || [];
 
