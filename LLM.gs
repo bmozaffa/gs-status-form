@@ -5,7 +5,7 @@ function simpleTestLLM() {
 }
 
 function manuallyInvokeLLM() {
-  return generateEditsByLLM(10469);
+  return generateEditsByLLM(11003);
 }
 
 function onStatusFormSubmission(event) {
@@ -14,10 +14,9 @@ function onStatusFormSubmission(event) {
 
 function preserveOriginalUrls(responseObject, edited) {
   let originalText = getStatusEntry(responseObject);
-
   const malformedUrlRegex = /htt?ps?:?\/\/?/g;
-  if (malformedUrlRegex.test(originalText)) {
-    const corrected = originalText.replace(malformedUrlRegex, "https://");
+  const corrected = originalText.replace(malformedUrlRegex, "https://");
+  if (corrected !== originalText) {
     Logger.log("Found malformed URL in [%s]", originalText);
     Logger.log("Replaced it with [%s]", corrected);
     originalText = corrected;
