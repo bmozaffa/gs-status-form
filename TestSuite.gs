@@ -619,9 +619,12 @@ function setupMockData() {
 }
 
 function setupMockKerberosMap() {
-  // Mock the kerberosMap global variable
-  if (typeof kerberosMap === 'undefined') {
-    kerberosMap = new Map();
+  // Mock the kerberosMap global variable - clear existing content if it exists
+  if (typeof kerberosMap !== 'undefined') {
+    kerberosMap.clear();
+  } else {
+    // Create new Map if it doesn't exist (test environment)
+    global.kerberosMap = new Map();
   }
 
   kerberosMap.set(TEST_CONFIG.TEST_KERBEROS, new Map([
@@ -642,9 +645,12 @@ function setupMockKerberosMap() {
 }
 
 function setupMockDocumentLinks() {
-  // Mock the documentLinks global variable
-  if (typeof documentLinks === 'undefined') {
-    documentLinks = new Map();
+  // Mock the documentLinks global variable - clear existing content if it exists
+  if (typeof documentLinks !== 'undefined') {
+    documentLinks.clear();
+  } else {
+    // Create new Map if it doesn't exist (test environment)
+    global.documentLinks = new Map();
   }
 
   documentLinks.set("Templates", new Map([
@@ -661,9 +667,21 @@ function setupMockDocumentLinks() {
 }
 
 function setupMockGlobalLinks() {
-  // Mock the globalLinks global variable
-  if (typeof globalLinks === 'undefined') {
-    globalLinks = {
+  // Mock the globalLinks global variable - update properties if it exists
+  if (typeof globalLinks !== 'undefined') {
+    // Clear and repopulate existing object
+    Object.keys(globalLinks).forEach(key => delete globalLinks[key]);
+    Object.assign(globalLinks, {
+      statusFormId: TEST_CONFIG.TEST_FORM_ID,
+      roverSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID,
+      statusEmailsId: TEST_CONFIG.TEST_SPREADSHEET_ID,
+      rosterSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID,
+      llmEditsSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID,
+      statusArchivesSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID
+    });
+  } else {
+    // Create new object if it doesn't exist (test environment)
+    global.globalLinks = {
       statusFormId: TEST_CONFIG.TEST_FORM_ID,
       roverSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID,
       statusEmailsId: TEST_CONFIG.TEST_SPREADSHEET_ID,
