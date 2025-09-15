@@ -312,7 +312,7 @@ class EnhancedTestRunner {
   runTestCases(functionName, testCases) {
     testCases.forEach(testCase => {
       try {
-        setupMockData(); // Reset for each test
+        resetTestEnvironment(); // Complete reset for each test
         const startTime = Date.now();
 
         testCase.test.call(this);

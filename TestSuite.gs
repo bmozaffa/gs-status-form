@@ -75,8 +75,8 @@ function runAllTests() {
 function testDoGet() {
   console.log("\n📝 Testing doGet function...");
 
-  // Setup mock data
-  setupMockData();
+  // Setup mock environment
+  resetTestEnvironment();
 
   try {
     // Test missing command
@@ -1070,6 +1070,9 @@ function resetTestEnvironment() {
 
   // Initialize Google Apps Script API mocks
   mockGoogleAppsScriptAPIs();
+
+  // Setup mock data (global variables)
+  setupMockData();
 }
 
 function assert(condition, message) {
