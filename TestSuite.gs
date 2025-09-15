@@ -621,7 +621,7 @@ function setupMockData() {
 function setupMockKerberosMap() {
   // Mock the kerberosMap global variable
   if (typeof kerberosMap === 'undefined') {
-    global.kerberosMap = new Map();
+    kerberosMap = new Map();
   }
 
   kerberosMap.set(TEST_CONFIG.TEST_KERBEROS, new Map([
@@ -644,7 +644,7 @@ function setupMockKerberosMap() {
 function setupMockDocumentLinks() {
   // Mock the documentLinks global variable
   if (typeof documentLinks === 'undefined') {
-    global.documentLinks = new Map();
+    documentLinks = new Map();
   }
 
   documentLinks.set("Templates", new Map([
@@ -663,7 +663,7 @@ function setupMockDocumentLinks() {
 function setupMockGlobalLinks() {
   // Mock the globalLinks global variable
   if (typeof globalLinks === 'undefined') {
-    global.globalLinks = {
+    globalLinks = {
       statusFormId: TEST_CONFIG.TEST_FORM_ID,
       roverSheetId: TEST_CONFIG.TEST_SPREADSHEET_ID,
       statusEmailsId: TEST_CONFIG.TEST_SPREADSHEET_ID,
@@ -796,7 +796,7 @@ function setupMockLLMProcessing() {
 // Mock Google Apps Script APIs for testing
 function mockGoogleAppsScriptAPIs() {
   // Mock FormApp
-  global.FormApp = {
+  FormApp = {
     openById: (id) => ({
       getResponses: () => mockData.formResponses.map(r => ({
         getTimestamp: () => r.timestamp,
@@ -816,7 +816,7 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock SpreadsheetApp
-  global.SpreadsheetApp = {
+  SpreadsheetApp = {
     openById: (id) => ({
       getSheetByName: (name) => ({
         getRange: (row, col, numRows, numCols) => ({
@@ -845,7 +845,7 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock DocumentApp
-  global.DocumentApp = {
+  DocumentApp = {
     openById: (id) => ({
       getBody: () => ({
         copy: () => ({}),
@@ -910,7 +910,7 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock GmailApp
-  global.GmailApp = {
+  GmailApp = {
     sendEmail: (to, subject, body, options) => {
       mockData.emailsSent.push({ to, subject, body, options });
     },
@@ -956,14 +956,14 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock HtmlService
-  global.HtmlService = {
+  HtmlService = {
     createHtmlOutput: (content) => ({
       getContent: () => content
     })
   };
 
   // Mock Calendar
-  global.Calendar = {
+  Calendar = {
     Events: {
       list: (email, params) => ({
         items: mockData.calendarEvents.get(email) || []
@@ -972,14 +972,14 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock PropertiesService
-  global.PropertiesService = {
+  PropertiesService = {
     getScriptProperties: () => ({
       getProperty: (key) => mockData.propertyValues.get(key) || ""
     })
   };
 
   // Mock People API
-  global.People = {
+  People = {
     People: {
       searchDirectoryPeople: (params) => ({
         totalSize: params.query.includes("invalid") ? 0 : 1
@@ -988,7 +988,7 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock GroupsApp
-  global.GroupsApp = {
+  GroupsApp = {
     getGroupByEmail: (email) => {
       if (email.includes("invalid")) {
         throw new Error("Group not found");
@@ -998,7 +998,7 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock Utilities
-  global.Utilities = {
+  Utilities = {
     formatDate: (date, timezone, format) => date.toISOString(),
     parseDate: (dateString, timezone, format) => new Date(dateString),
     formatString: (template, ...args) => {
@@ -1011,14 +1011,14 @@ function mockGoogleAppsScriptAPIs() {
   };
 
   // Mock Logger
-  global.Logger = {
+  Logger = {
     log: (message, ...args) => {
       console.log(`MOCK LOG: ${message}`, ...args);
     }
   };
 
   // Mock UrlFetchApp
-  global.UrlFetchApp = {
+  UrlFetchApp = {
     fetch: (url, options) => ({
       getResponseCode: () => 200,
       getContentText: () => JSON.stringify({

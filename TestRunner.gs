@@ -413,15 +413,15 @@ class EnhancedTestRunner {
   testNotifyMissingStatusEmailFailure() {
     setupMockMissingNotification();
     // Mock email sending failure
-    const originalGmailApp = global.GmailApp;
-    global.GmailApp = {
+    const originalGmailApp = GmailApp;
+    GmailApp = {
       sendEmail: () => { throw new Error("Email send failed"); }
     };
 
     try {
       notifyMissingStatus();
     } finally {
-      global.GmailApp = originalGmailApp;
+      GmailApp = originalGmailApp;
     }
   }
 
@@ -439,13 +439,13 @@ class EnhancedTestRunner {
 
   testNotifyMismatchAssignmentError() {
     // Simulate error in assignment comparison
-    const originalCompareAssignments = global.compareAssignments;
-    global.compareAssignments = () => { throw new Error("Assignment comparison failed"); };
+    const originalCompareAssignments = compareAssignments;
+    compareAssignments = () => { throw new Error("Assignment comparison failed"); };
 
     try {
       notifyMismatchAssignment();
     } finally {
-      global.compareAssignments = originalCompareAssignments;
+      compareAssignments = originalCompareAssignments;
     }
   }
 
@@ -462,8 +462,8 @@ class EnhancedTestRunner {
   testValidateRecipientsAPIFailure() {
     setupMockValidRecipients();
     // Mock API failure
-    const originalPeople = global.People;
-    global.People = {
+    const originalPeople = People;
+    People = {
       People: {
         searchDirectoryPeople: () => { throw new Error("API unavailable"); }
       }
@@ -472,7 +472,7 @@ class EnhancedTestRunner {
     try {
       validateRecipients();
     } finally {
-      global.People = originalPeople;
+      People = originalPeople;
     }
   }
 
@@ -481,15 +481,15 @@ class EnhancedTestRunner {
     setupMockLLMProcessing();
 
     // Mock LLM API failure
-    const originalUrlFetchApp = global.UrlFetchApp;
-    global.UrlFetchApp = {
+    const originalUrlFetchApp = UrlFetchApp;
+    UrlFetchApp = {
       fetch: () => { throw new Error("LLM API unavailable"); }
     };
 
     try {
       onStatusFormSubmission(mockEvent);
     } finally {
-      global.UrlFetchApp = originalUrlFetchApp;
+      UrlFetchApp = originalUrlFetchApp;
     }
   }
 
