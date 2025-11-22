@@ -3,7 +3,7 @@ const globalLinks = getGlobalLinks();
 const kerberosMap = getKerberosMap(globalLinks.roverSheetId);
 
 function testGetResponses() {
-  readResponseObjects(getGlobalLinks().statusFormId);
+  compileStatusDocs("1fILcSWPoOtnR7g6vQULGtlg4MilpIWtSpoDMoyXeD7M");
 }
 
 function getDocumentLinks() {
@@ -27,7 +27,6 @@ function getDocumentLinks() {
 
 function getGlobalLinks() {
   let links = {};
-  links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   links.rosterSheetId = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
@@ -172,7 +171,7 @@ function notifyMismatchAssignmentByManager(manager) {
 
 function getMissingStatusReport() {
   let allStatusDocumentIds = Array.from(documentLinks.get("Templates").keys())
-  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), allStatusDocumentIds);
+  let missing = getMissingStatus(readResponseObjects(), allStatusDocumentIds);
   let missingHierarchy = new Map();
   missing.statusRequired.forEach(kerberos => {
     let associateName = getAssociateName(kerberos).split(" ")[0];
@@ -190,7 +189,7 @@ function notifyMissingStatus() {
     return;
   }
   let allStatusDocumentIds = Array.from(documentLinks.get("Templates").keys())
-  let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), allStatusDocumentIds);
+  let missing = getMissingStatus(readResponseObjects(), allStatusDocumentIds);
 
   let subjectBase = "Missing weekly status report for ";
   let body = "This is an automated message to notify you that a weekly status report was not detected for the week.\n\nPlease submit your status report promptly. Kindly ignore this message if you are off work and a status entry is not expected.";
@@ -264,29 +263,39 @@ function getMissingStatus(responseObjects, statusDocIds) {
 }
 
 function archiveReports(days) {
-  let form = FormApp.openById(globalLinks.statusFormId);
   let cutoff = new Date();
   if (!days) {
     days = 7;
   }
   cutoff.setDate(cutoff.getDate() - days);
   Logger.log("Cutoff is " + cutoff);
-  responses = form.getResponses();
-  let count = 0;
-  let total = responses.length;
-  responses.forEach(response => {
-    if (response.getTimestamp() < cutoff) {
-      form.deleteResponse(response.getId());
-      count++;
-    } else {
-    }
-  });
-  Logger.log("Archived " + count + " responses out of " + total);
-  return count;
+  // let form = FormApp.openById(globalLinks.statusFormId);
+  // responses = form.getResponses();
+  // let count = 0;
+  // let total = responses.length;
+  // responses.forEach(response => {
+  //   if (response.getTimestamp() < cutoff) {
+  //     form.deleteResponse(response.getId());
+  //     count++;
+  //   } else {
+  //   }
+  // });
+  // Logger.log("Archived " + count + " responses out of " + total);
+  const sheets = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId);
+  const startRow = sheets.getSheetByName("Controls").getRange(1, 2, 1, 1).getValue();
+  let row = startRow;
+  const responseSheet = sheets.getSheetByName("Form Responses 1");
+  let timestamp = responseSheet.getSheetValues(row, 1, 1, 1)[0][0];
+  while (timestamp && timestamp < cutoff) {
+    timestamp = responseSheet.getSheetValues(++row, 1, 1, 1)[0][0];
+  }
+  sheets.getSheetByName("Controls").getRange(1, 1, 1, 2).setValues([[cutoff, row]]);
+  Logger.log("Reset status archives sheet to row " + row );
+  return row - startRow;
 }
 
 function logStatus() {
-  let responseObjects = readResponseObjects(globalLinks.statusFormId);
+  let responseObjects = readResponseObjects();
   for (const response of responseObjects) {
     response.llmEdit = getEditedVersion( response );
   }
@@ -355,7 +364,7 @@ function compileStatusDocs(docId) {
     statusDocIds = documentLinks.get("Templates").keys();
   }
   let statusDocs = new Set();
-  let lastStatusTimestamp = getLastStatusTimestamp(globalLinks.statusFormId);
+  let lastStatusTimestamp = getLastStatusTimestamp();
   for (let statusDocId of statusDocIds) {
     if (needsUpdate(lastStatusTimestamp, statusDocId)) {
       copyTemplate(documentLinks.get("Templates").get(statusDocId), statusDocId);
@@ -366,7 +375,7 @@ function compileStatusDocs(docId) {
   if (statusDocs.size === 0) {
     return "There is no status entry since document was generated";
   } else {
-    let allResponseObjects = readResponseObjects(globalLinks.statusFormId);
+    let allResponseObjects = readResponseObjects();
     for (let statusDocId of statusDocs) {
       let responseObjects = [];
       for (let responseObj of allResponseObjects) {
@@ -378,8 +387,7 @@ function compileStatusDocs(docId) {
       let statusMap = getStatusMap(responseObjects);
       insertStatus(statusDocId, statusMap, responseObjects.length);
     }
-    let form = FormApp.openById(globalLinks.statusFormId);
-    return "Successfully generated status reports based on " + form.getResponses().length + " form submissions";
+    return "Successfully generated status reports based on " + allResponseObjects.length + " entries";
   }
 }
 
@@ -407,18 +415,9 @@ function matchesStatusDoc(responseObject, statusDocId) {
   }
 }
 
-function getLastStatusTimestamp(formId) {
-  let form = FormApp.openById(formId);
-  let lastStatusTimestamp;
-  form.getResponses().forEach(response => {
-    if (lastStatusTimestamp) {
-      if (response.getTimestamp() > lastStatusTimestamp) {
-        lastStatusTimestamp = response.getTimestamp();
-      }
-    } else {
-      lastStatusTimestamp = response.getTimestamp();
-    }
-  });
+function getLastStatusTimestamp() {
+  const statusSheet = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId).getSheetByName("Form Responses 1");
+  const lastStatusTimestamp = statusSheet.getRange(statusSheet.getLastRow(), 1, 1, 1).getValue();
   Logger.log("Got latest status entry dated " + lastStatusTimestamp);
   return lastStatusTimestamp;
 }
@@ -555,34 +554,30 @@ function getStatusMap(responseObjects) {
   return statusMap;
 }
 
-function readResponseObjects(formId) {
-  let form = FormApp.openById(formId);
-  let responses = form.getResponses();
-  // form.getItems().forEach(value => {
-  //   Logger.log("item is %s", value.getTitle());
-  // })
-  let responseObjects = [];
-  // Logger.log("Found %s status entries", responses.length);
-  responses.forEach(response => {
-    responseObjects.push( getResponseObject(response) );
-  });
+function readResponseObjects() {
+  const sheets = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId);
+  const startRow = sheets.getSheetByName("Controls").getSheetValues(1, 2, 1, 1)[0][0] + 1;
+  const lastRow = sheets.getSheetByName("Form Responses 1").getLastRow();
+  if (lastRow <= startRow) {
+    return [];
+  }
+  const values = sheets.getSheetByName("Normalized").getSheetValues(startRow, 1, lastRow - startRow + 1, 7);
+  const responseObjects = [];
+  for (let row of values) {
+    responseObjects.push( getResponseObject(row) );
+  }
   return responseObjects;
 }
 
-function getResponseObject(response) {
-  let responseObj = {};
-  responseObj.id = response.getId();
-  responseObj.timestamp = response.getTimestamp();
-  responseObj.kerberos = response.getRespondentEmail().split('@')[0];
-  let answers = response.getItemResponses();
-  responseObj.initiative = answers[0].getResponse();
-  if (answers.length >= 3) {
-    if (answers.length >= 4) {
-      responseObj.effort = answers[1].getResponse();
-    }
-    responseObj.epic = answers[answers.length - 2].getResponse();
-    responseObj.status = answers[answers.length - 1].getResponse();
-  }
+function getResponseObject(row) {
+  const responseObj = {};
+  responseObj.timestamp = row[0];
+  responseObj.kerberos = row[1].split('@')[0];
+  responseObj.category = row[2];
+  responseObj.initiative = row[3];
+  responseObj.effort = row[4];
+  responseObj.epic = row[5];
+  responseObj.status = row[6];
   return responseObj;
 }
 
@@ -683,7 +678,7 @@ function insertStatus(statusDocId, statusMap, responseCount) {
       });
       statusMap.delete(key);
     } else if (key === "Missing Status") {
-      let missing = getMissingStatus(readResponseObjects(globalLinks.statusFormId), [statusDocId]);
+      let missing = getMissingStatus(readResponseObjects(), [statusDocId]);
       missing.statusRequired.forEach(kerberos => {
         let associateName = getAssociateName(kerberos).split(" ")[0];
         let inserted = body.insertListItem(listItemIndices[index] + 1, listItem.copy()).editAsText();
@@ -958,7 +953,7 @@ function sendDraftEmails() {
   let sheet = SpreadsheetApp.openById(globalLinks.statusEmailsId).getSheetByName("emails");
   let emailSetup = sheet.getRange(2, 4, sheet.getLastRow() - 1, 6).getValues();
   const fwdMap = new Map(emailSetup.map((row) => [row[0], row[2]]));
-  let count = 0
+  let count = 0;
   let total = GmailApp.getDrafts().length;
   while (count < total) {
     try {
@@ -1010,7 +1005,7 @@ function compareAssignments() {
   }
 
   let statusMap = new Map();
-  let responseObjects = readResponseObjects(globalLinks.statusFormId);
+  let responseObjects = readResponseObjects();
   for (let responseObject of responseObjects) {
     let statusArray = getMapArray(statusMap, responseObject.kerberos);
     let assignment;
