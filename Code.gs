@@ -27,6 +27,7 @@ function getDocumentLinks() {
 
 function getGlobalLinks() {
   let links = {};
+  links.statusFormId = "14g3I22FRYFV9kbE9csTdlbrKK3XbnHXo8rsMDg-Z_HI";
   links.roverSheetId = "1i7y_tFpeO68SetmsU2t-C6LsFETuZtkJGY5AVZ2PHW8";
   links.statusEmailsId = "1pke_nZSAwVFL9iIx-HKgaaZU4lMmr5aParHgN9wGdXE";
   links.rosterSheetId = "1ARSzzTSBtiOhPfo8agZe9TvI1tM4WQFEvENzZsD3feU";
@@ -269,18 +270,18 @@ function archiveReports(days) {
   }
   cutoff.setDate(cutoff.getDate() - days);
   Logger.log("Cutoff is " + cutoff);
-  // let form = FormApp.openById(globalLinks.statusFormId);
-  // responses = form.getResponses();
-  // let count = 0;
-  // let total = responses.length;
-  // responses.forEach(response => {
-  //   if (response.getTimestamp() < cutoff) {
-  //     form.deleteResponse(response.getId());
-  //     count++;
-  //   } else {
-  //   }
-  // });
-  // Logger.log("Archived " + count + " responses out of " + total);
+  let form = FormApp.openById(globalLinks.statusFormId);
+  responses = form.getResponses();
+  let count = 0;
+  let total = responses.length;
+  responses.forEach(response => {
+    if (response.getTimestamp() < cutoff) {
+      form.deleteResponse(response.getId());
+      count++;
+    } else {
+    }
+  });
+  Logger.log("Archived " + count + " responses out of " + total);
   const sheets = SpreadsheetApp.openById(getGlobalLinks().statusArchivesSheetId);
   const startRow = sheets.getSheetByName("Controls").getRange(1, 2, 1, 1).getValue();
   let row = startRow;
@@ -387,6 +388,7 @@ function compileStatusDocs(docId) {
       let statusMap = getStatusMap(responseObjects);
       insertStatus(statusDocId, statusMap, responseObjects.length);
     }
+    Logger.log( "Successfully generated status reports based on " + allResponseObjects.length + " entries" );
     return "Successfully generated status reports based on " + allResponseObjects.length + " entries";
   }
 }
