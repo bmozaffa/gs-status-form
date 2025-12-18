@@ -84,6 +84,7 @@ function doGet(e) {
   } else {
     response = "Provide the command (missing, generate, etc) as a request parameter: https://script.google.com/..../exec?command=generate";
   }
+  Logger.log(response);
   return HtmlService.createHtmlOutput(response);
 }
 
@@ -801,7 +802,7 @@ function getAssociateEmail(kerberos) {
 function getAssociateManager(kerberos) {
   const personMap = kerberosMap.get(kerberos);
   if (!personMap) {
-    Logger.log("Did not find %s's manager, rover sheet might need an update!");
+    Logger.log("Did not find %s's manager, rover sheet might need an update!", kerberosf);
     return "bmozaffa";
   }
   return personMap.get("Manager");
