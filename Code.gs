@@ -802,7 +802,7 @@ function getAssociateEmail(kerberos) {
 function getAssociateManager(kerberos) {
   const personMap = kerberosMap.get(kerberos);
   if (!personMap) {
-    Logger.log("Did not find %s's manager, rover sheet might need an update!", kerberosf);
+    Logger.log("Did not find %s's manager, rover sheet might need an update!", kerberos);
     return "bmozaffa";
   }
   return personMap.get("Manager");
